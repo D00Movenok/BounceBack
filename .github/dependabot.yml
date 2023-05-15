@@ -1,0 +1,31 @@
+version: 2
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    target-branch: "dev"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "09:00"
+      timezone: "Europe/Moscow"
+    assignees:
+      - "D00Movenok"
+    reviewers:
+      - "D00Movenok"
+    labels:
+      - "dependencies"
+
+  # Maintain dependencies for Golang
+  - package-ecosystem: "gomod"
+    target-branch: "dev"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "09:00"
+      timezone: "Europe/Moscow"
+    assignees:
+      - "D00Movenok"
+    reviewers:
+      - "D00Movenok"
+    labels:
+      - "dependencies"

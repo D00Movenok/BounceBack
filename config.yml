@@ -1,0 +1,9 @@
+proxies:
+  - name: example http proxy
+    type: http
+    listen: 0.0.0.0:5001
+    target: http://127.0.0.1:5002
+    timeout: 10s
+    # tls:
+    #   cert: testdata/tls/cert.pem
+    #   key: testdata/tls/key.pem

@@ -1,0 +1,37 @@
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
+
+[build]
+  args_bin = ["-v", "-c", "config.yml"]
+  bin = "./tmp/main"
+  cmd = "go build -o ./tmp/main cmd/bounceback/main.go"
+  delay = 1000
+  exclude_dir = ["tmp", "dist"]
+  exclude_file = []
+  exclude_regex = ["_test\\.go"]
+  exclude_unchanged = false
+  follow_symlink = false
+  full_bin = ""
+  include_dir = []
+  include_ext = ["go", "yml"]
+  kill_delay = "2s"
+  log = "build-errors.log"
+  send_interrupt = true
+  stop_on_error = true
+
+[color]
+  app = ""
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
+  watcher = "cyan"
+
+[log]
+  time = true
+
+[misc]
+  clean_on_exit = true
+
+[screen]
+  clear_on_rebuild = false
