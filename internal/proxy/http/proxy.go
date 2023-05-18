@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/base"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 
@@ -18,6 +19,8 @@ import (
 )
 
 const (
+	ProxyType = "http"
+
 	defaultTimeout = time.Second * 10
 )
 
@@ -25,13 +28,21 @@ var (
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
 )
 
-func NewProxy(cfg common.ProxieConfig) (*Proxy, error) {
+func NewProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
 	target, err := url.Parse(cfg.Target)
 	if err != nil {
-		return nil, fmt.Errorf("parsing target: %w", err)
+		return nil, fmt.Errorf("parsing target url: %w", err)
 	}
 
-	baseProxy, err := base.NewBaseProxy(cfg)
+	var action *url.URL
+	if cfg.Action == common.ActionProxy || cfg.Action == common.ActionRedirect {
+		action, err = url.Parse(cfg.ActionURL)
+		if err != nil {
+			return nil, fmt.Errorf("parsing action url: %w", err)
+		}
+	}
+
+	baseProxy, err := base.NewBaseProxy(cfg, fs)
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +53,9 @@ func NewProxy(cfg common.ProxieConfig) (*Proxy, error) {
 	}
 
 	p := &Proxy{
-		Proxy:  baseProxy,
-		Target: target,
+		Proxy:     baseProxy,
+		TargetURL: target,
+		ActionURL: action,
 
 		client: &http.Client{
 			Timeout: cfg.Timeout,
@@ -85,7 +97,8 @@ func NewProxy(cfg common.ProxieConfig) (*Proxy, error) {
 type Proxy struct {
 	*base.Proxy
 
-	Target    *url.URL
+	TargetURL *url.URL
+	ActionURL *url.URL
 	TLSConfig *tls.Config
 
 	server *http.Server
@@ -105,7 +118,7 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	}
 	p.client.CloseIdleConnections()
 
-	done := make(chan interface{}, 1)
+	done := make(chan any, 1)
 	go func() {
 		p.WG.Wait()
 		done <- nil
@@ -120,6 +133,58 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+func (p *Proxy) proxyRequest(url *url.URL, w http.ResponseWriter, r *http.Request, logger zerolog.Logger) {
+	r.URL.Scheme = url.Scheme
+	r.URL.Host = url.Host
+
+	r.RequestURI = ""
+	r.Host = ""
+	r.Header.Del("Accept-Encoding")
+
+	response, err := p.client.Do(r)
+	if err != nil {
+		logger.Error().Err(err).Msg("Error making proxy request")
+		handleError(w)
+		return
+	}
+	defer response.Body.Close()
+
+	for k, vals := range r.Header {
+		for _, v := range vals {
+			w.Header().Add(k, v)
+		}
+	}
+	w.WriteHeader(response.StatusCode)
+
+	if _, err = io.Copy(w, response.Body); err != nil {
+		logger.Error().Err(err).Msg("Error copying body")
+		handleError(w)
+		return
+	}
+}
+
+func (p *Proxy) processVerdict(w http.ResponseWriter, r *http.Request, logger zerolog.Logger) {
+	cfg := p.GetConfig()
+	switch cfg.Action {
+	case common.ActionProxy:
+		p.proxyRequest(p.ActionURL, w, r, logger)
+	case common.ActionRedirect:
+		http.Redirect(w, r, p.ActionURL.String(), http.StatusMovedPermanently)
+	case common.ActionDrop:
+		hj, _ := w.(http.Hijacker)
+		conn, _, err := hj.Hijack()
+		if err != nil {
+			logger.Error().Err(err).Msg("Can't hijack response")
+			handleError(w)
+			return
+		}
+		_ = conn.Close()
+	default:
+		logger.Warn().Msg("Request was filtered, but action is None")
+		p.proxyRequest(p.TargetURL, w, r, logger)
+	}
+}
+
 func (p *Proxy) processRequest(r *http.Request, logger zerolog.Logger) bool {
 	var err error
 	if r.Body, err = wrapper.WrapHTTPBody(r.Body); err != nil {
@@ -128,17 +193,11 @@ func (p *Proxy) processRequest(r *http.Request, logger zerolog.Logger) bool {
 	}
 	r.Header.Set("Host", r.Host)
 
-	reqEntity := &wrapper.Request{Request: r}
-	if err = p.RunFilters(reqEntity); err != nil {
-		logger.Error().Err(err).Msg("Error running filters")
+	reqEntity := &wrapper.HTTPRequest{Request: r}
+	if err = p.RunFilters(reqEntity, logger); err != nil {
+		logger.Error().Err(err).Str("action", p.GetConfig().Action).Msg("Filtered")
 		return false
 	}
-
-	r.URL.Scheme = p.Target.Scheme
-	r.URL.Host = p.Target.Host
-	r.RequestURI = ""
-	r.Host = ""
-	r.Header.Del("Accept-Encoding")
 
 	return true
 }
@@ -151,30 +210,11 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 
 		logRequest(r, logger)
 		if ok := p.processRequest(r, logger); !ok {
-			handleError(w)
+			p.processVerdict(w, r, logger)
 			return
 		}
 
-		response, err := p.client.Do(r)
-		if err != nil {
-			logger.Error().Err(err).Msg("Error making target request")
-			handleError(w)
-			return
-		}
-		defer response.Body.Close()
-
-		for k, vals := range r.Header {
-			for _, v := range vals {
-				w.Header().Add(k, v)
-			}
-		}
-		w.WriteHeader(response.StatusCode)
-
-		if _, err = io.Copy(w, response.Body); err != nil {
-			logger.Error().Err(err).Msg("Error copying body")
-			handleError(w)
-			return
-		}
+		p.proxyRequest(p.TargetURL, w, r, logger)
 	}
 }
 

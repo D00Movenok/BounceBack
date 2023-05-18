@@ -67,15 +67,15 @@ func parseConfig() {
 	}
 }
 
-func parseProxyConfig() *common.ProxyConfig {
-	cfg := new(common.ProxyConfig)
+func parseProxyConfig() *common.Config {
+	cfg := new(common.Config)
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatal().Err(err).Msg("Error parsing proxy config from file")
 	}
 	return cfg
 }
 
-func runProxyManager(cfg *common.ProxyConfig) *proxy.Manager {
+func runProxyManager(cfg *common.Config) *proxy.Manager {
 	m, err := proxy.NewManager(cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating proxy manager")

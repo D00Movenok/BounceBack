@@ -7,7 +7,7 @@ import (
 
 type Proxy interface {
 	Start() error
-	Shutdown(ctx context.Context) error
+	Shutdown(context.Context) error
 
 	fmt.Stringer
 }

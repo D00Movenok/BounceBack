@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 
 	"github.com/rs/zerolog/log"
@@ -12,11 +13,16 @@ import (
 
 // Request is a wrapper around http.Request implementing Entity interface.
 // It's expected that Request.Body is already wrapped with BodyReader.
-type Request struct {
+type HTTPRequest struct {
 	Request *http.Request
 }
 
-func (r Request) GetBody() ([]byte, error) {
+func (r HTTPRequest) GetIP() netip.Addr {
+	ap := netip.MustParseAddrPort(r.Request.RemoteAddr)
+	return ap.Addr()
+}
+
+func (r HTTPRequest) GetBody() ([]byte, error) {
 	defer r.resetBody()
 	buf, err := io.ReadAll(r.Request.Body)
 	if err != nil {
@@ -25,19 +31,19 @@ func (r Request) GetBody() ([]byte, error) {
 	return buf, nil
 }
 
-func (r Request) GetCookies() ([]*http.Cookie, error) {
+func (r HTTPRequest) GetCookies() ([]*http.Cookie, error) {
 	return r.Request.Cookies(), nil
 }
 
-func (r Request) GetHeaders() (map[string][]string, error) {
+func (r HTTPRequest) GetHeaders() (map[string][]string, error) {
 	return r.Request.Header, nil
 }
 
-func (r Request) GetURL() (*url.URL, error) {
+func (r HTTPRequest) GetURL() (*url.URL, error) {
 	return r.Request.URL, nil
 }
 
-func (r Request) GetRaw() ([]byte, error) {
+func (r HTTPRequest) GetRaw() ([]byte, error) {
 	defer r.resetBody()
 	data, err := httputil.DumpRequest(r.Request, true)
 	if err != nil {
@@ -46,7 +52,7 @@ func (r Request) GetRaw() ([]byte, error) {
 	return data, err
 }
 
-func (r Request) resetBody() {
+func (r HTTPRequest) resetBody() {
 	if err := r.Request.Body.Close(); err != nil {
 		log.Error().Err(err).Msg("Error resetting request body")
 	}

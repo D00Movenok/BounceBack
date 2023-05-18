@@ -1,3 +1,9 @@
+filters:
+  - name: default_ip_banlist
+    type: ip_filter
+    params:
+      banlist: data/banned_ips.txt
+
 proxies:
   - name: example http proxy
     type: http
@@ -7,3 +13,7 @@ proxies:
     # tls:
     #   cert: testdata/tls/cert.pem
     #   key: testdata/tls/key.pem
+    action: proxy
+    action_url: https://www.google.com/
+    filters:
+      - default_ip_banlist

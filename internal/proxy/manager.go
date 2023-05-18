@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/http"
 
 	"github.com/rs/zerolog/log"
@@ -17,20 +18,22 @@ var (
 	ErrNoSuchProxy = errors.New("no such proxy")
 )
 
-func NewManager(cfg *common.ProxyConfig) (*Manager, error) {
+func NewManager(cfg *common.Config) (*Manager, error) {
+	fs, err := filters.NewFilterSet(cfg.Filters)
+	if err != nil {
+		return nil, fmt.Errorf("can't create filters: %w", err)
+	}
+
 	proxies := make([]Proxy, 0)
-	for _, pCfg := range cfg.Proxies {
-		var (
-			p   Proxy
-			err error
-		)
-		switch pCfg.Type {
-		case "http":
-			if p, err = http.NewProxy(pCfg); err != nil {
+	for _, pc := range cfg.Proxies {
+		var p Proxy
+		switch pc.Type {
+		case http.ProxyType:
+			if p, err = http.NewProxy(pc, fs); err != nil {
 				log.Fatal().Err(err).Msg("Error creating http proxy")
 			}
 		default:
-			return nil, fmt.Errorf("invalid proxy type: %s", pCfg.Type)
+			return nil, fmt.Errorf("invalid proxy type: %s", pc.Type)
 		}
 		proxies = append(proxies, p)
 	}
