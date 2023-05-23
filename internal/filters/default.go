@@ -1,7 +1,18 @@
 package filters
 
-func GetDefaultFilters() map[string]FilterCreator {
-	return map[string]FilterCreator{
-		"ip_filter": NewIPFilter,
+func GetDefaultFilterWrappers() map[string]FilterWrapperCreator {
+	return map[string]FilterWrapperCreator{
+		"not": NewNotWrapper,
+	}
+}
+
+func GetDefaultFilterBase() map[string]FilterBaseCreator {
+	return map[string]FilterBaseCreator{
+		// boolean
+		"and": NewCompositeAndFilter,
+		"or":  NewCompositeOrFilter,
+		"not": NewCompositeNotFilter,
+		// ip filters
+		"ip": NewIPFilter,
 	}
 }

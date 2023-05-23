@@ -1,8 +1,44 @@
 filters:
+  # "ip" filter fires only when list contain INGRESS ip adress.
+  # PARAMS: list - path to list with ip adresses or/and subnets.
   - name: default_ip_banlist
-    type: ip_filter
+    type: ip
     params:
-      banlist: data/banned_ips.txt
+      list: data/banned_ips.txt
+
+  - name: default_ip_allowlist
+    type: not::ip
+    params:
+      list: data/allowed_ips.txt
+
+  # "and" filter equals boolean AND.
+  # fires only when ALL passed filters fires.
+  # PARAMS: filters - list of filter names above.
+  # - name: and_usage_example
+  #   type: and
+  #   params:
+  #     filters:
+  #       - default_ip_banlist
+  #       - default_ip_allowlist
+
+  # "or" filter equals boolean OR.
+  # fires only when ANY passed filter fires.
+  # PARAMS: filters - list of filter names above.
+  # - name: or_usage_example
+  #   type: or
+  #   params:
+  #     filters:
+  #       - default_ip_banlist
+  #       - default_ip_allowlist
+
+  # "not" filter equals boolean NOT.
+  # fires only when passed filter NOT fires.
+  # may be used as BASE (type: not) filter or WRAPPER filter (type: not::somefiltertype).
+  # PARAMS for BASE filter: filter - filter name from above.
+  # - name: not_usage_example
+  #   type: not
+  #   params:
+  #     filter: default_ip_allowlist
 
 proxies:
   - name: example http proxy
@@ -16,4 +52,5 @@ proxies:
     action: proxy
     action_url: https://www.google.com/
     filters:
+      - default_ip_allowlist
       - default_ip_banlist

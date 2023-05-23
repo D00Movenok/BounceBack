@@ -3,6 +3,7 @@ package filters
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"net/netip"
 	"os"
@@ -12,7 +13,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-func NewIPFilter(cfg common.FilterConfig) (Filter, error) {
+var (
+	ErrInvalidFilterArgs = errors.New("invalid filter arguments")
+)
+
+func NewIPFilter(_ FilterSet, cfg common.FilterConfig) (Filter, error) {
 	var (
 		params IPFilterParams
 		subnet netip.Prefix
@@ -56,7 +61,7 @@ func NewIPFilter(cfg common.FilterConfig) (Filter, error) {
 }
 
 type IPFilterParams struct {
-	Path string `json:"banlist" mapstructure:"banlist"`
+	Path string `json:"list" mapstructure:"list"`
 }
 
 type IPFilter struct {
@@ -83,5 +88,5 @@ func (f *IPFilter) Apply(e wrapper.Entity) (bool, error) {
 }
 
 func (f *IPFilter) String() string {
-	return fmt.Sprintf("IPFilter(path=%s, ips=%d, subnets=%d)", f.path, len(f.ipBanlist), len(f.subnetBanlist))
+	return fmt.Sprintf("IPFilter(%s)", f.path)
 }

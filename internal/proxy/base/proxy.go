@@ -25,7 +25,7 @@ func NewBaseProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error)
 	for _, f := range cfg.Filters {
 		_, ok := fs.Get(f)
 		if !ok {
-			return nil, fmt.Errorf("can't find rule \"%s\" for proxy \"%s\"", f, cfg.Name)
+			return nil, fmt.Errorf("can't find filter \"%s\" for proxy \"%s\"", f, cfg.Name)
 		}
 	}
 

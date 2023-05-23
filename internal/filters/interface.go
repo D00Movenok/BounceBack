@@ -12,4 +12,5 @@ type Filter interface {
 	fmt.Stringer
 }
 
-type FilterCreator func(common.FilterConfig) (Filter, error)
+type FilterBaseCreator func(fs FilterSet, cfg common.FilterConfig) (Filter, error)
+type FilterWrapperCreator func(filter Filter, cfg common.FilterConfig) Filter
