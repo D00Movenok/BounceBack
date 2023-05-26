@@ -14,5 +14,7 @@ func GetDefaultFilterBase() map[string]FilterBaseCreator {
 		"not": NewCompositeNotFilter,
 		// ip filters
 		"ip": NewIPFilter,
+		// misc
+		"work_time": NewWorkTimeFilter,
 	}
 }

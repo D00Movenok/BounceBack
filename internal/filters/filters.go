@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
@@ -60,6 +61,35 @@ func NewIPFilter(_ FilterSet, cfg common.FilterConfig) (Filter, error) {
 	return filter, nil
 }
 
+func NewWorkTimeFilter(_ FilterSet, cfg common.FilterConfig) (Filter, error) {
+	var params WorkTimeParams
+	err := mapstructure.Decode(cfg.Params, &params)
+	if err != nil {
+		return nil, fmt.Errorf("can't decode params: %w", err)
+	}
+
+	loc, err := time.LoadLocation(params.Location)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse location: %w", err)
+	}
+	from, err := time.ParseInLocation("15:04", params.From, loc)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse from time: %w", err)
+	}
+	to, err := time.ParseInLocation("15:04", params.To, loc)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse to time: %w", err)
+	}
+
+	filter := &WorkTimeFilter{
+		from: from,
+		to:   to,
+		loc:  loc,
+	}
+
+	return filter, nil
+}
+
 type IPFilterParams struct {
 	Path string `json:"list" mapstructure:"list"`
 }
@@ -88,5 +118,33 @@ func (f *IPFilter) Apply(e wrapper.Entity) (bool, error) {
 }
 
 func (f *IPFilter) String() string {
-	return fmt.Sprintf("IPFilter(%s)", f.path)
+	return fmt.Sprintf("IP(list=%s)", f.path)
+}
+
+type WorkTimeParams struct {
+	From     string `json:"from" mapstructure:"from"`
+	To       string `json:"to" mapstructure:"to"`
+	Location string `json:"timezone" mapstructure:"timezone"`
+}
+
+type WorkTimeFilter struct {
+	from time.Time
+	to   time.Time
+	loc  *time.Location
+}
+
+func (f *WorkTimeFilter) Apply(_ wrapper.Entity) (bool, error) {
+	n := time.Now().In(f.loc)
+	now, _ := time.ParseInLocation("15:04", fmt.Sprintf("%02d:%02d", n.Hour(), n.Minute()), f.loc)
+	fromLtTo := f.from.Before(f.to) && (now.Before(f.from) || now.After(f.to))
+	fromGtTo := f.from.After(f.to) && (now.Before(f.from) && now.After(f.to))
+	if fromLtTo || fromGtTo {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (f *WorkTimeFilter) String() string {
+	return fmt.Sprintf("WorkTime(from=%02d:%02d, to=%02d:%02d, timezone=%s)",
+		f.from.Hour(), f.from.Minute(), f.to.Hour(), f.to.Minute(), f.loc.String())
 }

@@ -1,6 +1,9 @@
 filters:
-  # "ip" filter fires only when list contain INGRESS ip adress.
-  # PARAMS: list - path to list with ip adresses or/and subnets.
+  # "ip" filter fires only when list contain INGRESS ip adress from list.
+  # may be combined with "not" wrapper for allowlist.
+  # PARAMS:
+  # * list - path to list with ip adresses or/and subnets.
+  #
   - name: default_ip_banlist
     type: ip
     params:
@@ -11,9 +14,25 @@ filters:
     params:
       list: data/allowed_ips.txt
 
+  # "work_time" filter fires only time of request NOT in work time period.
+  # may be combined with "and" filter for more than one work time periods.
+  # PARAMS:
+  # * from - start of work day in form of HH:mm.
+  # * to - end of work day in form of HH:mm.
+  # * timezone - timezone of "from" and "to" fields.
+  #
+  - name: example_work_time_filter
+    type: work_time
+    params:
+      from: 08:00
+      to: 16:00
+      timezone: Europe/Moscow
+
   # "and" filter equals boolean AND.
   # fires only when ALL passed filters fires.
-  # PARAMS: filters - list of filter names above.
+  # PARAMS:
+  # * filters - list of filter names above.
+  #
   # - name: and_usage_example
   #   type: and
   #   params:
@@ -23,7 +42,9 @@ filters:
 
   # "or" filter equals boolean OR.
   # fires only when ANY passed filter fires.
-  # PARAMS: filters - list of filter names above.
+  # PARAMS:
+  # * filters - list of filter names above.
+  #
   # - name: or_usage_example
   #   type: or
   #   params:
@@ -34,7 +55,9 @@ filters:
   # "not" filter equals boolean NOT.
   # fires only when passed filter NOT fires.
   # may be used as BASE (type: not) filter or WRAPPER filter (type: not::somefiltertype).
-  # PARAMS for BASE filter: filter - filter name from above.
+  # PARAMS for BASE filter:
+  # * filter - filter name from above.
+  #
   # - name: not_usage_example
   #   type: not
   #   params:
@@ -49,8 +72,9 @@ proxies:
     # tls:
     #   cert: testdata/tls/cert.pem
     #   key: testdata/tls/key.pem
-    action: proxy
-    action_url: https://www.google.com/
+    action: redirect
+    action_url: https://www.youtube.com/watch?v=dQw4w9WgXcQ
     filters:
       - default_ip_allowlist
       - default_ip_banlist
+      - example_work_time_filter
