@@ -14,12 +14,14 @@ filters:
     params:
       list: data/allowed_ips.txt
 
-  # "work_time" filter fires only time of request NOT in work time period.
+  # "work_time" filter fires only when time of request NOT in work time period.
   # may be combined with "and" filter for more than one work time periods.
   # PARAMS:
   # * from - start of work day in form of HH:mm.
   # * to - end of work day in form of HH:mm.
   # * timezone - timezone of "from" and "to" fields.
+  # * weekdays - list of working weekdays, empty == all
+  #     may be: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
   #
   - name: example_work_time_filter
     type: work_time
@@ -27,6 +29,14 @@ filters:
       from: 08:00
       to: 16:00
       timezone: Europe/Moscow
+      weekdays:
+        # - Monday
+        # - Tuesday
+        # - Wednesday
+        # - Thursday
+        # - Friday
+        # - Saturday
+        # - Sunday
 
   # "and" filter equals boolean AND.
   # fires only when ALL passed filters fires.
