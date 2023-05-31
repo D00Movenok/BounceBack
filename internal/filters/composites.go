@@ -1,15 +1,22 @@
 package filters
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 	"github.com/mitchellh/mapstructure"
+	"github.com/rs/zerolog"
 )
 
-func NewCompositeAndFilter(fs FilterSet, cfg common.FilterConfig) (Filter, error) {
+var (
+	ErrInvalidFilterArgs = errors.New("invalid filter arguments")
+)
+
+func NewCompositeAndFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig) (Filter, error) {
 	var params CompositeAndFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -32,7 +39,7 @@ func NewCompositeAndFilter(fs FilterSet, cfg common.FilterConfig) (Filter, error
 	return f, nil
 }
 
-func NewCompositeOrFilter(fs FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewCompositeOrFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig) (Filter, error) {
 	var params CompositeOrFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -55,7 +62,7 @@ func NewCompositeOrFilter(fs FilterSet, cfg common.FilterConfig) (Filter, error)
 	return f, nil
 }
 
-func NewCompositeNotFilter(fs FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewCompositeNotFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig) (Filter, error) {
 	var params CompositeNotFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -83,9 +90,9 @@ type CompositeAndFilter struct {
 	filters []Filter
 }
 
-func (f CompositeAndFilter) Apply(e wrapper.Entity) (bool, error) {
+func (f CompositeAndFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
 	for _, filter := range f.filters {
-		res, err := filter.Apply(e)
+		res, err := filter.Apply(e, logger)
 		if err != nil {
 			return false, fmt.Errorf("error in filter %T: %w", filter, err)
 		}
@@ -112,9 +119,9 @@ type CompositeOrFilter struct {
 	filters []Filter
 }
 
-func (r CompositeOrFilter) Apply(e wrapper.Entity) (bool, error) {
+func (r CompositeOrFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
 	for _, filter := range r.filters {
-		res, err := filter.Apply(e)
+		res, err := filter.Apply(e, logger)
 		if err != nil {
 			return false, fmt.Errorf("error in filter %T: %w", filter, err)
 		}
@@ -141,8 +148,8 @@ type CompositeNotFilter struct {
 	filter Filter
 }
 
-func (f CompositeNotFilter) Apply(e wrapper.Entity) (bool, error) {
-	res, err := f.filter.Apply(e)
+func (f CompositeNotFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+	res, err := f.filter.Apply(e, logger)
 	if err != nil {
 		return false, fmt.Errorf("error in filter %T: %w", f.filter, err)
 	}

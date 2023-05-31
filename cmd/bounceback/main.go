@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/proxy"
 )
 
@@ -28,8 +29,11 @@ func main() {
 	setLogLevel()
 	parseConfig()
 
+	db := createKeyValueStorage()
+	defer db.DB.Close()
+
 	cfg := parseProxyConfig()
-	m := runProxyManager(cfg)
+	m := runProxyManager(db, cfg)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
@@ -67,6 +71,14 @@ func parseConfig() {
 	}
 }
 
+func createKeyValueStorage() *database.DB {
+	db, err := database.New("storage")
+	if err != nil {
+		log.Fatal().Err(err).Msg("Can't create key/value storage")
+	}
+	return db
+}
+
 func parseProxyConfig() *common.Config {
 	cfg := new(common.Config)
 	if err := viper.Unmarshal(&cfg); err != nil {
@@ -75,8 +87,8 @@ func parseProxyConfig() *common.Config {
 	return cfg
 }
 
-func runProxyManager(cfg *common.Config) *proxy.Manager {
-	m, err := proxy.NewManager(cfg)
+func runProxyManager(db *database.DB, cfg *common.Config) *proxy.Manager {
+	m, err := proxy.NewManager(db, cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating proxy manager")
 	}

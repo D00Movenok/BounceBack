@@ -26,3 +26,6 @@ tmp/
 
 # release folder
 dist/
+
+# bounceback temp files
+storage/

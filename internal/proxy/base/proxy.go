@@ -62,7 +62,7 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) error {
 	for _, f := range p.config.Filters {
 		filterLogger := logger.With().Str("filter", f).Logger()
 		filter, _ := p.filters.Get(f)
-		filtered, err := filter.Apply(e)
+		filtered, err := filter.Apply(e, filterLogger)
 		if err != nil {
 			filterLogger.Error().Err(err).Msg("Filter error")
 			continue

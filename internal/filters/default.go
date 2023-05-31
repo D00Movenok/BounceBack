@@ -13,8 +13,9 @@ func GetDefaultFilterBase() map[string]FilterBaseCreator {
 		"or":  NewCompositeOrFilter,
 		"not": NewCompositeNotFilter,
 		// ip filters
-		"ip": NewIPFilter,
+		"ip":  NewIPFilter,
+		"geo": NewGeolocationFilter,
 		// misc
-		"work_time": NewWorkTimeFilter,
+		"time": NewTimeFilter,
 	}
 }

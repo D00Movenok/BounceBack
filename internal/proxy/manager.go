@@ -2,24 +2,20 @@ package proxy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/http"
 
 	"github.com/rs/zerolog/log"
 )
 
-var (
-	ErrNoSuchProxy = errors.New("no such proxy")
-)
-
-func NewManager(cfg *common.Config) (*Manager, error) {
-	fs, err := filters.NewFilterSet(cfg.Filters)
+func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
+	fs, err := filters.NewFilterSet(db, cfg.Filters)
 	if err != nil {
 		return nil, fmt.Errorf("can't create filters: %w", err)
 	}

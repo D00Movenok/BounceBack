@@ -13,6 +13,7 @@ func handleError(w http.ResponseWriter) {
 func logRequest(r *http.Request, logger zerolog.Logger) {
 	logger.Debug().
 		Str("method", r.Method).
+		Str("ua", r.UserAgent()).
 		Stringer("url", r.URL).
 		Msg("New request")
 }

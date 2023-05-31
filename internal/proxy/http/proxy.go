@@ -35,8 +35,8 @@ func NewProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
 	}
 
 	var action *url.URL
-	if cfg.Action == common.ActionProxy || cfg.Action == common.ActionRedirect {
-		action, err = url.Parse(cfg.ActionURL)
+	if cfg.OnTrigger.Action == common.ActionProxy || cfg.OnTrigger.Action == common.ActionRedirect {
+		action, err = url.Parse(cfg.OnTrigger.URL)
 		if err != nil {
 			return nil, fmt.Errorf("parsing action url: %w", err)
 		}
@@ -165,7 +165,7 @@ func (p *Proxy) proxyRequest(url *url.URL, w http.ResponseWriter, r *http.Reques
 
 func (p *Proxy) processVerdict(w http.ResponseWriter, r *http.Request, logger zerolog.Logger) {
 	cfg := p.GetConfig()
-	switch cfg.Action {
+	switch cfg.OnTrigger.Action {
 	case common.ActionProxy:
 		p.proxyRequest(p.ActionURL, w, r, logger)
 	case common.ActionRedirect:
@@ -195,7 +195,7 @@ func (p *Proxy) processRequest(r *http.Request, logger zerolog.Logger) bool {
 
 	reqEntity := &wrapper.HTTPRequest{Request: r}
 	if err = p.RunFilters(reqEntity, logger); err != nil {
-		logger.Error().Err(err).Str("action", p.GetConfig().Action).Msg("Filtered")
+		logger.Error().Err(err).Str("action", p.GetConfig().OnTrigger.Action).Msg("Filtered")
 		return false
 	}
 

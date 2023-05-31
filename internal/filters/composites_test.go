@@ -4,8 +4,11 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -17,8 +20,8 @@ type MockFilter struct {
 	called bool
 }
 
-func (m MockFilter) Apply(e wrapper.Entity) (bool, error) {
-	params := m.Called(e)
+func (m MockFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+	params := m.Called(e, logger)
 	return params.Bool(0), params.Error(1)
 }
 
@@ -188,10 +191,10 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 				fs.Filters[k] = v
 			}
 
-			filter, err := NewCompositeAndFilter(fs, tt.fields.cfg)
+			filter, err := NewCompositeAndFilter(nil, fs, tt.fields.cfg)
 			require.Equal(t, tt.want.createErr, err != nil, "NewCompositeAndFilter() error mismatch")
 			if !tt.want.createErr {
-				res, err := filter.Apply(nil)
+				res, err := filter.Apply(nil, log.Logger)
 				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch")
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 
@@ -367,10 +370,10 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 				fs.Filters[k] = v
 			}
 
-			filter, err := NewCompositeOrFilter(fs, tt.fields.cfg)
+			filter, err := NewCompositeOrFilter(nil, fs, tt.fields.cfg)
 			require.Equal(t, tt.want.createErr, err != nil, "NewCompositeOrFilter() error mismatch")
 			if !tt.want.createErr {
-				res, err := filter.Apply(nil)
+				res, err := filter.Apply(nil, log.Logger)
 				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch")
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 
@@ -531,10 +534,10 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 				fs.Filters[k] = v
 			}
 
-			filter, err := NewCompositeNotFilter(fs, tt.fields.cfg)
+			filter, err := NewCompositeNotFilter(nil, fs, tt.fields.cfg)
 			require.Equal(t, tt.want.createErr, err != nil, "NewCompositeNotFilter() error mismatch")
 			if !tt.want.createErr {
-				res, err := filter.Apply(nil)
+				res, err := filter.Apply(nil, log.Logger)
 				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch")
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 

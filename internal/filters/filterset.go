@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,7 +20,7 @@ func (fs *FilterSet) Get(name string) (Filter, bool) {
 	return nil, false
 }
 
-func NewFilterSet(cfg []common.FilterConfig) (*FilterSet, error) {
+func NewFilterSet(db *database.DB, cfg []common.FilterConfig) (*FilterSet, error) {
 	fs := FilterSet{Filters: map[string]Filter{}}
 
 	for _, fc := range cfg {
@@ -35,7 +36,7 @@ func NewFilterSet(cfg []common.FilterConfig) (*FilterSet, error) {
 
 		lastToken := tokens[len(tokens)-1]
 		if newFilter, ok := GetDefaultFilterBase()[lastToken]; ok {
-			if filter, err = newFilter(fs, fc); err != nil {
+			if filter, err = newFilter(db, fs, fc); err != nil {
 				return nil, fmt.Errorf("creating filter %s: %w", fc.Name, err)
 			}
 		} else {
