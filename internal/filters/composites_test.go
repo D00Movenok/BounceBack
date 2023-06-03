@@ -1,4 +1,4 @@
-package filters
+package filters_test
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/mock"
@@ -20,17 +21,17 @@ type MockFilter struct {
 	called bool
 }
 
-func (m MockFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+func (m *MockFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
 	params := m.Called(e, logger)
 	return params.Bool(0), params.Error(1)
 }
 
-func (m MockFilter) String() string {
+func (m *MockFilter) String() string {
 	return "mock"
 }
 
 func TestComposites_CompositeAndFilter(t *testing.T) {
-	type fields struct {
+	type args struct {
 		fs  map[string]*MockFilter
 		cfg common.FilterConfig
 	}
@@ -40,13 +41,13 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		applyErr  bool
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   want
+		name string
+		args args
+		want want
 	}{
 		{
 			"and true",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    true,
@@ -75,7 +76,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		},
 		{
 			"and false",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    true,
@@ -109,7 +110,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		},
 		{
 			"and filter error",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    true,
@@ -138,7 +139,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		},
 		{
 			"and unk filter error",
-			fields{
+			args{
 				fs: map[string]*MockFilter{},
 				cfg: common.FilterConfig{
 					Name: "test",
@@ -156,7 +157,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		},
 		{
 			"and not enough Params",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    true,
@@ -181,24 +182,24 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fs := FilterSet{
-				Filters: map[string]Filter{},
+			fs := filters.FilterSet{
+				Filters: map[string]filters.Filter{},
 			}
-			for k, v := range tt.fields.fs {
+			for k, v := range tt.args.fs {
 				if v.called {
 					v.On("Apply", mock.Anything, mock.Anything).Return(v.res, v.err)
 				}
 				fs.Filters[k] = v
 			}
 
-			filter, err := NewCompositeAndFilter(nil, fs, tt.fields.cfg)
-			require.Equal(t, tt.want.createErr, err != nil, "NewCompositeAndFilter() error mismatch")
+			filter, err := filters.NewCompositeAndFilter(nil, fs, tt.args.cfg)
+			require.Equalf(t, tt.want.createErr, err != nil, "NewCompositeAndFilter() error mismatch: %s", err)
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch")
+				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 
-				for _, v := range tt.fields.fs {
+				for _, v := range tt.args.fs {
 					if v.called {
 						v.AssertExpectations(t)
 					}
@@ -209,7 +210,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 }
 
 func TestComposites_CompositeOrFilter(t *testing.T) {
-	type fields struct {
+	type args struct {
 		fs  map[string]*MockFilter
 		cfg common.FilterConfig
 	}
@@ -219,13 +220,13 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		applyErr  bool
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   want
+		name string
+		args args
+		want want
 	}{
 		{
 			"or true",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    false,
@@ -259,7 +260,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		},
 		{
 			"or false",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    false,
@@ -288,7 +289,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		},
 		{
 			"or filter error",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    false,
@@ -317,7 +318,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		},
 		{
 			"or unk filter error",
-			fields{
+			args{
 				fs: map[string]*MockFilter{},
 				cfg: common.FilterConfig{
 					Name: "test",
@@ -335,7 +336,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		},
 		{
 			"or not enough Params",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    true,
@@ -360,24 +361,24 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fs := FilterSet{
-				Filters: map[string]Filter{},
+			fs := filters.FilterSet{
+				Filters: map[string]filters.Filter{},
 			}
-			for k, v := range tt.fields.fs {
+			for k, v := range tt.args.fs {
 				if v.called {
 					v.On("Apply", mock.Anything, mock.Anything).Return(v.res, v.err)
 				}
 				fs.Filters[k] = v
 			}
 
-			filter, err := NewCompositeOrFilter(nil, fs, tt.fields.cfg)
-			require.Equal(t, tt.want.createErr, err != nil, "NewCompositeOrFilter() error mismatch")
+			filter, err := filters.NewCompositeOrFilter(nil, fs, tt.args.cfg)
+			require.Equalf(t, tt.want.createErr, err != nil, "NewCompositeOrFilter() error mismatch: %s", err)
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch")
+				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 
-				for _, v := range tt.fields.fs {
+				for _, v := range tt.args.fs {
 					if v.called {
 						v.AssertExpectations(t)
 					}
@@ -388,7 +389,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 }
 
 func TestComposites_CompositeNotFilter(t *testing.T) {
-	type fields struct {
+	type args struct {
 		fs  map[string]*MockFilter
 		cfg common.FilterConfig
 	}
@@ -398,13 +399,13 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		applyErr  bool
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   want
+		name string
+		args args
+		want want
 	}{
 		{
 			"not true",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    false,
@@ -428,7 +429,7 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		},
 		{
 			"not false",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    true,
@@ -452,7 +453,7 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		},
 		{
 			"not filter error",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    false,
@@ -476,7 +477,7 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		},
 		{
 			"not unk filter error",
-			fields{
+			args{
 				fs: map[string]*MockFilter{},
 				cfg: common.FilterConfig{
 					Name: "test",
@@ -494,7 +495,7 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		},
 		{
 			"not not enough Params or too many arguments",
-			fields{
+			args{
 				fs: map[string]*MockFilter{
 					"r1": {
 						res:    true,
@@ -524,24 +525,24 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fs := FilterSet{
-				Filters: map[string]Filter{},
+			fs := filters.FilterSet{
+				Filters: map[string]filters.Filter{},
 			}
-			for k, v := range tt.fields.fs {
+			for k, v := range tt.args.fs {
 				if v.called {
 					v.On("Apply", mock.Anything, mock.Anything).Return(v.res, v.err)
 				}
 				fs.Filters[k] = v
 			}
 
-			filter, err := NewCompositeNotFilter(nil, fs, tt.fields.cfg)
-			require.Equal(t, tt.want.createErr, err != nil, "NewCompositeNotFilter() error mismatch")
+			filter, err := filters.NewCompositeNotFilter(nil, fs, tt.args.cfg)
+			require.Equalf(t, tt.want.createErr, err != nil, "NewCompositeNotFilter() error mismatch: %s", err)
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch")
+				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 
-				for _, v := range tt.fields.fs {
+				for _, v := range tt.args.fs {
 					if v.called {
 						v.AssertExpectations(t)
 					}

@@ -72,7 +72,7 @@ func parseConfig() {
 }
 
 func createKeyValueStorage() *database.DB {
-	db, err := database.New("storage")
+	db, err := database.New("storage", false)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Can't create key/value storage")
 	}

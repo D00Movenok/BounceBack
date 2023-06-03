@@ -75,6 +75,9 @@ func getLocation(ctx context.Context, fmtURL string, ip string, httpClient *http
 		return nil, fmt.Errorf("can't create http request: %w", err)
 	}
 
+	// for unknown reason they bans default useragent
+	req.Header.Set("User-Agent", "ipapi.co/#go")
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("can't make http request: %w", err)
