@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,14 +19,31 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/proxy"
 )
 
+const banner = `
+ ╭─╮   ____       
+ ╰─╯   │   ╲ ____ ╭──╮ ┬  ┬ ┬  ┬ ╭──╮ ╭──╮
+     ╲ │___╱╱   │ │  │ │  │ │╲╲│ │    ├──╯
+       │   ╲╲___│ ╰──╯ ╰──╯ ┴  ┴ ╰──╯ ╰──╯
+     ╱ │___╱╱   │ ╭──╮ ╭──╮ ┬ ┌    %s
+            ╲___│ ├──┤ │    ├─┴╮   @d00movenok
+   ╱              ┴  ┴ ╰──╯ ┴  ┴
+
+:: BounceBack - Stealth redirector for your redteam operations.
+
+`
+
 var (
+	version = "v0.0.0-next"
+
 	configFile = pflag.StringP("config", "c", "config.yml", "Path to the config file in YAML format")
-	verbose    = pflag.BoolP("verbose", "v", false, "Verbose logging & web server debug")
+	logFile    = pflag.StringP("log", "l", "bounceback.log", "Path to the log file")
+	verbose    = pflag.BoolP("verbose", "v", false, "Verbose logging")
 )
 
 func main() {
-	pflag.Parse()
+	fmt.Fprintf(os.Stdout, banner[1:], version)
 
+	initPflag()
 	initLogger()
 	setLogLevel()
 	parseConfig()
@@ -47,12 +66,28 @@ func main() {
 	log.Info().Msg("Shutdown successful")
 }
 
+func initPflag() {
+	pflag.ErrHelp = errors.New("") //nolint:reassign // remove error from output
+	pflag.Usage = func() {
+		fmt.Fprintln(os.Stdout, "Usage of BounceBack:")
+		pflag.PrintDefaults()
+	}
+	pflag.Parse()
+}
+
 func initLogger() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{
+
+	fileWriter, err := os.OpenFile(*logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Can't create/open log file")
+	}
+	consoleWriter := zerolog.ConsoleWriter{
 		Out:        os.Stderr,
 		TimeFormat: time.RFC3339,
-	})
+	}
+
+	log.Logger = log.Output(zerolog.MultiLevelWriter(consoleWriter, fileWriter))
 }
 
 func setLogLevel() {
@@ -72,6 +107,7 @@ func parseConfig() {
 }
 
 func createKeyValueStorage() *database.DB {
+	log.Info().Msg("Creating storage")
 	db, err := database.New("storage", false)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Can't create key/value storage")
@@ -88,12 +124,13 @@ func parseProxyConfig() *common.Config {
 }
 
 func runProxyManager(db *database.DB, cfg *common.Config) *proxy.Manager {
+	log.Info().Msg("Starting proxies")
 	m, err := proxy.NewManager(db, cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating proxy manager")
 	}
 	if err = m.StartAll(); err != nil {
-		log.Fatal().Err(err).Msg("Error starting proxy manager")
+		log.Fatal().Err(err).Msg("Error starting proxies")
 	}
 	return m
 }
