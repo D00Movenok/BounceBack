@@ -3,6 +3,11 @@ before:
     - go mod tidy
     - go mod download
 
+upx:
+  - enabled: true
+    compress: best
+    lzma: true
+
 builds:
   - id: "bounceback"
     main: ./cmd/bounceback

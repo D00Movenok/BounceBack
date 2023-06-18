@@ -1,12 +1,12 @@
 package filters
 
-func GetDefaultFilterWrappers() map[string]FilterWrapperCreator {
+func GetFilterWrappers() map[string]FilterWrapperCreator {
 	return map[string]FilterWrapperCreator{
 		"not": NewNotWrapper,
 	}
 }
 
-func GetDefaultFilterBase() map[string]FilterBaseCreator {
+func GetFilterBase() map[string]FilterBaseCreator {
 	return map[string]FilterBaseCreator{
 		// boolean
 		"and": NewCompositeAndFilter,
@@ -15,6 +15,8 @@ func GetDefaultFilterBase() map[string]FilterBaseCreator {
 		// ip filters
 		"ip":  NewIPFilter,
 		"geo": NewGeolocationFilter,
+		// C2 profiles
+		"malleable": NewMalleableFilter,
 		// misc
 		"time": NewTimeFilter,
 	}

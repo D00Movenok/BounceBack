@@ -22,11 +22,20 @@ func (r HTTPRequest) GetIP() netip.Addr {
 	return ap.Addr()
 }
 
+func (r HTTPRequest) GetRaw() ([]byte, error) {
+	defer r.resetBody()
+	data, err := httputil.DumpRequest(r.Request, true)
+	if err != nil {
+		return nil, fmt.Errorf("can't dump request: %w", err)
+	}
+	return data, err
+}
+
 func (r HTTPRequest) GetBody() ([]byte, error) {
 	defer r.resetBody()
 	buf, err := io.ReadAll(r.Request.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading body: %w", err)
+		return nil, fmt.Errorf("can't read body: %w", err)
 	}
 	return buf, nil
 }
@@ -43,13 +52,8 @@ func (r HTTPRequest) GetURL() (*url.URL, error) {
 	return r.Request.URL, nil
 }
 
-func (r HTTPRequest) GetRaw() ([]byte, error) {
-	defer r.resetBody()
-	data, err := httputil.DumpRequest(r.Request, true)
-	if err != nil {
-		return nil, fmt.Errorf("dumping request: %w", err)
-	}
-	return data, err
+func (r HTTPRequest) GetMethod() (string, error) {
+	return r.Request.Method, nil
 }
 
 func (r HTTPRequest) resetBody() {

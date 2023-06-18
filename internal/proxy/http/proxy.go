@@ -31,14 +31,14 @@ var (
 func NewProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
 	target, err := url.Parse(cfg.Target)
 	if err != nil {
-		return nil, fmt.Errorf("parsing target url: %w", err)
+		return nil, fmt.Errorf("can't parse target url: %w", err)
 	}
 
 	var action *url.URL
 	if cfg.OnTrigger.Action == common.ActionProxy || cfg.OnTrigger.Action == common.ActionRedirect {
 		action, err = url.Parse(cfg.OnTrigger.URL)
 		if err != nil {
-			return nil, fmt.Errorf("parsing action url: %w", err)
+			return nil, fmt.Errorf("can't parse action url: %w", err)
 		}
 	}
 
@@ -77,7 +77,7 @@ func NewProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
 		var cert tls.Certificate
 		cert, err = tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
 		if err != nil {
-			return nil, fmt.Errorf("loading tls config: %w", err)
+			return nil, fmt.Errorf("can't load tls config: %w", err)
 		}
 		// #nosec G402
 		p.TLSConfig = &tls.Config{
@@ -114,7 +114,7 @@ func (p *Proxy) Start() error {
 func (p *Proxy) Shutdown(ctx context.Context) error {
 	p.Closing = true
 	if err := p.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("shutting down server: %w", err)
+		return fmt.Errorf("can't shutdown server: %w", err)
 	}
 	p.client.CloseIdleConnections()
 
@@ -220,16 +220,13 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 
 func (p *Proxy) serve() {
 	defer p.WG.Done()
-	p.Logger.Info().Msg("Starting")
-
 	if p.TLSConfig != nil {
 		if err := p.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-			p.Logger.Error().Err(err).Msg("Error in server")
+			p.Logger.Fatal().Err(err).Msg("Error in server")
 		}
 	} else {
 		if err := p.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			p.Logger.Error().Err(err).Msg("Error in server")
+			p.Logger.Fatal().Err(err).Msg("Error in server")
 		}
 	}
-	p.Logger.Info().Msg("Server shutdown complete")
 }

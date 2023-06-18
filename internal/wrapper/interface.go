@@ -13,9 +13,12 @@ var (
 
 type Entity interface {
 	GetIP() netip.Addr
+	GetRaw() ([]byte, error)
+
+	// HTTP
+	GetBody() ([]byte, error)
 	GetCookies() ([]*http.Cookie, error)
 	GetHeaders() (map[string][]string, error)
 	GetURL() (*url.URL, error)
-	GetBody() ([]byte, error)
-	GetRaw() ([]byte, error)
+	GetMethod() (string, error)
 }

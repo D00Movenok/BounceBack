@@ -21,8 +21,9 @@ filters:
   # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP/'
   # * ipapi.co: curl -s 'https://ipapi.co/TARGET-IP/json/'
   # PARAMS:
-  # * geolocations - ARRAY of geolocations to match. All fields are re2 regexps arrays.
-  #   Empty arrays will be ignored and marked as match. Only one regexp must match in each field.
+  # * geolocations - ARRAY of geolocations to match. All fields are re2
+  #   regexps arrays. Empty arrays will be ignored and marked as match.
+  #   Only one regexp must match in each field.
   #   Geolocations array elements contain next ARRAY-fields:
   #     * organisation - organisation name (ORG, ISP and AS (if contains company name)).
   #     * country_code - country code (https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes).
@@ -83,6 +84,35 @@ filters:
         # - Saturday
         # - Sunday
 
+  # "malleable" filter fires only when HTTP(s) request did not
+  # match MalleableC2 profile.
+  # May be combined with "AND" filter to use more than one profile.
+  # Filter algorithm:
+  # 1. Verify useragent:
+  #   a. UA did not match "block_useragents" (if not empty).
+  #   b. UA matched "allow_useragents" (if not empty).
+  # 2. Allow excluded paths.
+  # 3. Any verified:
+  #   a. Verify any "http-get" or "http-post" profile:
+  #     i.   HTTP method match.
+  #     ii.  Any URI match.
+  #     iii. All parameters exist.
+  #     iv.  All headers exist.
+  #     v.   Validate encoding in "out", "id", "metadata" fields.
+  #   b. Verify any "http-stager" (like previous letter) or other
+  #      stager paths (full MSF compatibility) if "host_stage" flag set.
+  # PARAMS:
+  # * profile - path to MalleableC2 profile.
+  # * exclude - array of exluded paths (regexp re2).
+  #
+  - name: example_malleable_filter
+    type: malleable
+    params:
+      profile: data/default.profile
+      exclude:
+        - /some/example/.*
+        - /some/other/example/url
+
   # "and" filter equals boolean AND.
   # Fires only when ALL passed filters fires.
   # PARAMS:
@@ -109,7 +139,8 @@ filters:
 
   # "not" filter equals boolean NOT.
   # Fires only when passed filter NOT fires.
-  # may be used as BASE (type: not) filter or WRAPPER filter (type: not::somefiltertype).
+  # May be used as BASE (type: not) filter
+  # or WRAPPER filter (type: not::somefiltertype).
   # PARAMS for BASE filter:
   # * filter - filter name from above.
   #
@@ -121,7 +152,7 @@ filters:
 proxies:
   - name: example http proxy
     type: http
-    listen: 0.0.0.0:5001
+    listen: 0.0.0.0:5002
     target: http://127.0.0.1:5002
     timeout: 10s
     # tls:
@@ -135,3 +166,4 @@ proxies:
       - default_ip_banlist
       - example_not_time_filter
       - example_geo_filter_allowlist
+      - example_malleable_filter

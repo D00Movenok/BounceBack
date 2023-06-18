@@ -21,6 +21,11 @@ jobs:
       - name: Fetch tags
         run: git fetch --force --tags
 
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v2
+        with:
+          install-only: true
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:

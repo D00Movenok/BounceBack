@@ -19,7 +19,7 @@ var (
 
 func NewBaseProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
 	logger := log.With().
-		Str("proxy", cfg.Name).
+		Str("name", cfg.Name).
 		Logger()
 
 	for _, f := range cfg.Filters {
@@ -31,6 +31,7 @@ func NewBaseProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error)
 
 	return &Proxy{
 		ListenAddr: cfg.Listen,
+		TargetAddr: cfg.Target,
 		Name:       cfg.Name,
 		Type:       cfg.Type,
 
@@ -43,6 +44,7 @@ func NewBaseProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error)
 
 type Proxy struct {
 	ListenAddr string
+	TargetAddr string
 	Name       string
 	Type       string
 
@@ -56,6 +58,15 @@ type Proxy struct {
 
 func (p *Proxy) GetConfig() *common.ProxyConfig {
 	return &p.config
+}
+
+func (p *Proxy) GetFullInfoLogger() *zerolog.Logger {
+	logger := p.Logger.With().
+		Str("listen", p.ListenAddr).
+		Str("target", p.TargetAddr).
+		Str("type", p.Type).
+		Logger()
+	return &logger
 }
 
 func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) error {
@@ -76,5 +87,5 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) error {
 }
 
 func (p *Proxy) String() string {
-	return fmt.Sprintf("%s proxy %s (%s)", p.Type, p.Name, p.ListenAddr)
+	return fmt.Sprintf("%s proxy \"%s\" (%s->%s)", p.Type, p.Name, p.ListenAddr, p.TargetAddr)
 }

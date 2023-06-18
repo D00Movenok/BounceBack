@@ -26,6 +26,11 @@ func (m *MockEntity) GetIP() netip.Addr {
 	return args.Get(0).(netip.Addr)
 }
 
+func (m *MockEntity) GetRaw() ([]byte, error) {
+	args := m.Called()
+	return args.Get(0).([]byte), args.Error(1)
+}
+
 func (m *MockEntity) GetBody() ([]byte, error) {
 	args := m.Called()
 	return args.Get(0).([]byte), args.Error(1)
@@ -36,19 +41,19 @@ func (m *MockEntity) GetCookies() ([]*http.Cookie, error) {
 	return args.Get(0).([]*http.Cookie), args.Error(1)
 }
 
+func (m *MockEntity) GetHeaders() (map[string][]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string][]string), args.Error(1)
+}
+
 func (m *MockEntity) GetURL() (*url.URL, error) {
 	args := m.Called()
 	return args.Get(0).(*url.URL), args.Error(1)
 }
 
-func (m *MockEntity) GetRaw() ([]byte, error) {
+func (m *MockEntity) GetMethod() (string, error) {
 	args := m.Called()
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockEntity) GetHeaders() (map[string][]string, error) {
-	args := m.Called()
-	return args.Get(0).(map[string][]string), args.Error(1)
+	return args.String(0), args.Error(1)
 }
 
 func mod(x int, y int) int {
@@ -66,7 +71,7 @@ func getWeekdayName(offset int) string {
 		"Saturday",
 	}
 	ls := len(names)
-	nw := int(time.Now().Weekday())
+	nw := int(time.Now().In(time.UTC).Weekday())
 	o := mod(nw+offset, ls)
 	return names[o]
 }
@@ -78,7 +83,7 @@ func getTime(hourOffset int, minuteOffset int) string {
 	return fmt.Sprintf("%02d:%02d", hour, minute)
 }
 
-func TestFilters_IPFilter(t *testing.T) {
+func TestBase_IPFilter(t *testing.T) {
 	type args struct {
 		ip  string
 		cfg common.FilterConfig
@@ -300,7 +305,7 @@ func TestFilters_IPFilter(t *testing.T) {
 				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
 				res, err := filter.Apply(e, log.Logger)
-				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
+				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 				e.AssertExpectations(t)
 			}
@@ -309,7 +314,7 @@ func TestFilters_IPFilter(t *testing.T) {
 }
 
 // test ignores timezone.
-func TestFilters_TimeFilter(t *testing.T) {
+func TestBase_TimeFilter(t *testing.T) {
 	type args struct {
 		cfg common.FilterConfig
 	}
@@ -576,14 +581,14 @@ func TestFilters_TimeFilter(t *testing.T) {
 
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
+				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
 				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 			}
 		})
 	}
 }
 
-func TestFilters_GeoFilter(t *testing.T) {
+func TestBase_GeoFilter(t *testing.T) {
 	type args struct {
 		ip  string
 		cfg common.FilterConfig
@@ -739,7 +744,7 @@ func TestFilters_GeoFilter(t *testing.T) {
 					e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
 					res, err := filter.Apply(e, log.Logger)
-					require.Equal(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
+					require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
 					require.Equal(t, tt.want.res, res, "Apply() result mismatch")
 					e.AssertExpectations(t)
 
