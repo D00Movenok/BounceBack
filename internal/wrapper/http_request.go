@@ -28,7 +28,7 @@ func (r HTTPRequest) GetRaw() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't dump request: %w", err)
 	}
-	return data, err
+	return data, nil
 }
 
 func (r HTTPRequest) GetBody() ([]byte, error) {

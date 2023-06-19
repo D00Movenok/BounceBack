@@ -171,7 +171,7 @@ linters:
     - exportloopref # checks for pointers to enclosing loop variables
     - forbidigo # forbids identifiers
     - funlen # tool for detection of long functions
-    # - gci # controls golang package import order and makes it always deterministic
+    #- gci # controls golang package import order and makes it always deterministic
     - gochecknoglobals # checks that no global variables exist
     - gochecknoinits # checks that no init functions are present in Go code
     - gocognit # computes and checks the cognitive complexity of functions
@@ -218,10 +218,10 @@ linters:
     #- godox # detects FIXME, TODO and other comment keywords
     #- interfacebloat # checks the number of methods inside an interface
     #- ireturn # accept interfaces, return concrete types
-    #- nilnil # checks that there is no simultaneous return of nil error and an invalid value
-    # - testpackage # makes you use a separate _test package
+    - nilnil # checks that there is no simultaneous return of nil error and an invalid value
+    - testpackage # makes you use a separate _test package
     #- varnamelen # [great idea, but too many false positives] checks that the length of a variable's name matches its scope
-    #- wrapcheck # checks that errors returned from external packages are wrapped
+    - wrapcheck # checks that errors returned from external packages are wrapped
 
     ## disabled
     #- containedctx # detects struct contained context.Context field
@@ -237,7 +237,7 @@ linters:
     #- grouper # analyzes expression groups
     #- importas # enforces consistent import aliases
     #- maintidx # measures the maintainability index of each function
-    #- misspell # [useless] finds commonly misspelled English words in comments
+    - misspell # [useless] finds commonly misspelled English words in comments
     #- nlreturn # [too strict and mostly code is not more readable] checks for a new line before return and branch statements to increase code clarity
     #- paralleltest # [too many false positives] detects missing usage of t.Parallel() method in your Go test
     #- tagliatelle # checks the struct tags

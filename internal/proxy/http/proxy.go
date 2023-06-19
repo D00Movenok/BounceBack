@@ -44,7 +44,7 @@ func NewProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
 
 	baseProxy, err := base.NewBaseProxy(cfg, fs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't create base proxy: %w", err)
 	}
 
 	if cfg.Timeout == 0 {

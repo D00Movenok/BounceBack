@@ -59,6 +59,19 @@ filters:
           asn:
             - AS15169
 
+  # "reverse_lookup" filter fires only when DNS PTR answer matches
+  # with any regexp from list. Used for domain banlist.
+  # May be combined with "not" wrapper/filter for domain allowlist.
+  # PARAMS:
+  # * dns - dns server to send PTR request if form of ip:port.
+  # * list - path to list of regexps (regexp re2).
+  #
+  - name: default_lookup_filter
+    type: reverse_lookup
+    params:
+      dns: 1.1.1.1:53
+      list: data/banned_words.txt
+
   # "time" filter fires only when time of request is in time period.
   # May be combined with "and" filter for more than one time periods.
   # May be combined with "not" wrapper/filter for time allowlist.
@@ -152,7 +165,7 @@ filters:
 proxies:
   - name: example http proxy
     type: http
-    listen: 0.0.0.0:5002
+    listen: 0.0.0.0:5001
     target: http://127.0.0.1:5002
     timeout: 10s
     # tls:
@@ -164,6 +177,7 @@ proxies:
     filters:
       # - default_ip_allowlist
       - default_ip_banlist
+      # - example_geo_filter_allowlist
+      - default_lookup_filter
       - example_not_time_filter
-      - example_geo_filter_allowlist
-      - example_malleable_filter
+      # - example_malleable_filter

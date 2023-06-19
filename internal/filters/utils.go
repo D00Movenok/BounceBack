@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+var (
+	ErrOddOrZero = errors.New("data length is odd or equal zero")
+)
+
 func FormatStringerSlice[T fmt.Stringer](s []T) string {
 	slice := make([]string, 0, len(s))
 	for _, d := range s {
@@ -29,7 +33,7 @@ func xorDecrypt(key []byte, data []byte) []byte {
 
 func netbiosDecode(data []byte) ([]byte, error) {
 	if len(data)%2 != 0 || len(data) == 0 {
-		return nil, errors.New("data lengtg is odd or equal zero")
+		return nil, ErrOddOrZero
 	}
 	d := bytes.ToUpper(data)
 	for i := 0; i < len(d); i += 2 {

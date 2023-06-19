@@ -13,8 +13,9 @@ func GetFilterBase() map[string]FilterBaseCreator {
 		"or":  NewCompositeOrFilter,
 		"not": NewCompositeNotFilter,
 		// ip filters
-		"ip":  NewIPFilter,
-		"geo": NewGeolocationFilter,
+		"ip":             NewIPFilter,
+		"geo":            NewGeolocationFilter,
+		"reverse_lookup": NewReverseLookupFilter,
 		// C2 profiles
 		"malleable": NewMalleableFilter,
 		// misc

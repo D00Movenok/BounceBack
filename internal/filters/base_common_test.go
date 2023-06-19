@@ -28,27 +28,27 @@ func (m *MockEntity) GetIP() netip.Addr {
 
 func (m *MockEntity) GetRaw() ([]byte, error) {
 	args := m.Called()
-	return args.Get(0).([]byte), args.Error(1)
+	return args.Get(0).([]byte), args.Error(1) //nolint: wrapcheck // mock
 }
 
 func (m *MockEntity) GetBody() ([]byte, error) {
 	args := m.Called()
-	return args.Get(0).([]byte), args.Error(1)
+	return args.Get(0).([]byte), args.Error(1) //nolint: wrapcheck // mock
 }
 
 func (m *MockEntity) GetCookies() ([]*http.Cookie, error) {
 	args := m.Called()
-	return args.Get(0).([]*http.Cookie), args.Error(1)
+	return args.Get(0).([]*http.Cookie), args.Error(1) //nolint: wrapcheck // mock
 }
 
 func (m *MockEntity) GetHeaders() (map[string][]string, error) {
 	args := m.Called()
-	return args.Get(0).(map[string][]string), args.Error(1)
+	return args.Get(0).(map[string][]string), args.Error(1) //nolint: wrapcheck // mock
 }
 
 func (m *MockEntity) GetURL() (*url.URL, error) {
 	args := m.Called()
-	return args.Get(0).(*url.URL), args.Error(1)
+	return args.Get(0).(*url.URL), args.Error(1) //nolint: wrapcheck // mock
 }
 
 func (m *MockEntity) GetMethod() (string, error) {
@@ -752,6 +752,179 @@ func TestBase_GeoFilter(t *testing.T) {
 					err = db.DB.DropAll()
 					require.NoError(t, err, "Can't clear db")
 				}
+			}
+		})
+	}
+}
+
+func TestBase_ReverseLookupFilter(t *testing.T) {
+	type args struct {
+		ip  string
+		cfg common.FilterConfig
+	}
+	type want struct {
+		res       bool
+		createErr bool
+		applyErr  bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			"reverse lookup true",
+			args{
+				ip: "1.1.1.1",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "reverse_lookup",
+					Params: map[string]any{
+						"dns":  "1.1.1.1:53",
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       true,
+				createErr: false,
+				applyErr:  false,
+			},
+		},
+		{
+			"reverse lookup false",
+			args{
+				ip: "8.8.8.8",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "reverse_lookup",
+					Params: map[string]any{
+						"dns":  "1.1.1.1:53",
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: false,
+				applyErr:  false,
+			},
+		},
+		{
+			"reverse lookup err can't open file",
+			args{
+				ip: "1.1.1.1",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "reverse_lookup",
+					Params: map[string]any{
+						"dns":  "1.1.1.1:53",
+						"list": "../../testdata/words_lists/banlist_1337.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: true,
+				applyErr:  false,
+			},
+		},
+		{
+			"reverse lookup err can't parse regexp",
+			args{
+				ip: "1.1.1.1",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "reverse_lookup",
+					Params: map[string]any{
+						"dns":  "1.1.1.1:53",
+						"list": "../../testdata/words_lists/broken_regexp.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: true,
+				applyErr:  false,
+			},
+		},
+		{
+			"reverse lookup err can't parse dns",
+			args{
+				ip: "1.1.1.1",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "reverse_lookup",
+					Params: map[string]any{
+						"dns":  "1.1.1.1",
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: true,
+				applyErr:  false,
+			},
+		},
+		{
+			"reverse lookup err dead dns",
+			args{
+				ip: "1.1.1.1",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "reverse_lookup",
+					Params: map[string]any{
+						"dns":  "1.1.1.1:553",
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: false,
+				applyErr:  true,
+			},
+		},
+		{
+			"reverse lookup err unknown ip",
+			args{
+				ip: "195.168.14.15",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "reverse_lookup",
+					Params: map[string]any{
+						"dns":  "1.1.1.1:53",
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: false,
+				applyErr:  true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := database.New("", true)
+			require.NoError(t, err, "can't create db")
+			filter, err := filters.NewReverseLookupFilter(db, filters.FilterSet{}, tt.args.cfg)
+			require.Equalf(t, tt.want.createErr, err != nil, "NewReverseLookupFilter() error mismatch: %s", err)
+
+			if !tt.want.createErr {
+				e := new(MockEntity)
+				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
+
+				res, err := filter.Apply(e, log.Logger)
+				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
+				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+				e.AssertExpectations(t)
+
+				// clear db so all geo getters will be tested
+				err = db.DB.DropAll()
+				require.NoError(t, err, "Can't clear db")
 			}
 		})
 	}

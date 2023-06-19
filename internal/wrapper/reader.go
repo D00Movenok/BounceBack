@@ -39,7 +39,7 @@ func (r *BodyReader) Read(b []byte) (int, error) {
 	if err != nil && err != io.EOF {
 		return 0, fmt.Errorf("can't read buffer: %w", err)
 	}
-	return n, err
+	return n, nil
 }
 
 func (r *BodyReader) Close() error {
