@@ -21,7 +21,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func NewMalleableFilter(_ *database.DB, _ FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewMalleableFilter(
+	_ *database.DB,
+	_ FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var params MallebaleFilterParams
 
 	err := mapstructure.Decode(cfg.Params, &params)
@@ -58,8 +62,8 @@ func NewMalleableFilter(_ *database.DB, _ FilterSet, cfg common.FilterConfig) (F
 }
 
 type MallebaleFilterParams struct {
-	Profile string   `json:"profile" mapstructure:"profile"`
-	Exclude []string `json:"exclude" mapstructure:"exclude"`
+	Profile string   `mapstructure:"profile"`
+	Exclude []string `mapstructure:"exclude"`
 }
 
 type MallebaleFilter struct {
@@ -68,15 +72,14 @@ type MallebaleFilter struct {
 	profile *malleable.Profile
 }
 
-func (f *MallebaleFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
-	var (
-		allow bool
-		url   *url.URL
-		err   error
-	)
+func (f *MallebaleFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
+	var url *url.URL
 
 	// verify useragent
-	allow, err = f.verifyUserAgent(e)
+	allow, err := f.verifyUserAgent(e)
 	if err != nil {
 		return false, fmt.Errorf("can't verify user-agent: %w", err)
 	}
@@ -97,8 +100,16 @@ func (f *MallebaleFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, 
 
 	// verify profiles
 	for _, p := range f.profile.HTTPGet {
-		allow, err = f.verifyHTTPProfile(e, logger, p.Verb, http.MethodGet, p.URI,
-			p.Client.Parameters, p.Client.Headers, [][]malleable.Function{p.Client.Metadata})
+		allow, err = f.verifyHTTPProfile(
+			e,
+			logger,
+			p.Verb,
+			http.MethodGet,
+			p.URI,
+			p.Client.Parameters,
+			p.Client.Headers,
+			[][]malleable.Function{p.Client.Metadata},
+		)
 		if err != nil {
 			return false, fmt.Errorf("can't verify get profile: %w", err)
 		}
@@ -107,8 +118,16 @@ func (f *MallebaleFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, 
 		}
 	}
 	for _, p := range f.profile.HTTPPost {
-		allow, err = f.verifyHTTPProfile(e, logger, p.Verb, http.MethodPost, p.URI,
-			p.Client.Parameters, p.Client.Headers, [][]malleable.Function{p.Client.ID, p.Client.Output})
+		allow, err = f.verifyHTTPProfile(
+			e,
+			logger,
+			p.Verb,
+			http.MethodPost,
+			p.URI,
+			p.Client.Parameters,
+			p.Client.Headers,
+			[][]malleable.Function{p.Client.ID, p.Client.Output},
+		)
 		if err != nil {
 			return false, fmt.Errorf("can't verify post profile: %w", err)
 		}
@@ -120,10 +139,21 @@ func (f *MallebaleFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, 
 	// verify stager if exist
 	if f.profile.HostStage {
 		for _, p := range f.profile.HTTPStager {
-			allow, err = f.verifyHTTPProfile(e, logger, http.MethodGet, http.MethodGet, append(p.URIx64, p.URIx86...),
-				p.Client.Parameters, p.Client.Headers, [][]malleable.Function{{{Func: "uri-append"}}})
+			allow, err = f.verifyHTTPProfile(
+				e,
+				logger,
+				http.MethodGet,
+				http.MethodGet,
+				append(p.URIx64, p.URIx86...),
+				p.Client.Parameters,
+				p.Client.Headers,
+				[][]malleable.Function{{{Func: "uri-append"}}},
+			)
 			if err != nil {
-				return false, fmt.Errorf("can't verify stager profile: %w", err)
+				return false, fmt.Errorf(
+					"can't verify stager profile: %w",
+					err,
+				)
 			}
 			if allow {
 				return false, nil
@@ -180,9 +210,16 @@ func (f *MallebaleFilter) verifyUserAgent(e wrapper.Entity) (bool, error) {
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyHTTPProfile(e wrapper.Entity, logger zerolog.Logger,
-	v string, dv string, u malleable.URIs, p []malleable.Parameter,
-	h []malleable.Header, transforms [][]malleable.Function) (bool, error) {
+func (f *MallebaleFilter) verifyHTTPProfile(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+	v string,
+	dv string,
+	u malleable.URIs,
+	p []malleable.Parameter,
+	h []malleable.Header,
+	transforms [][]malleable.Function,
+) (bool, error) {
 	var (
 		uriTransforms        []malleable.Function
 		parametersTransforms []malleable.Function
@@ -256,7 +293,11 @@ func (f *MallebaleFilter) verifyHTTPProfile(e wrapper.Entity, logger zerolog.Log
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyMethod(e wrapper.Entity, v string, dv string) (bool, error) {
+func (f *MallebaleFilter) verifyMethod(
+	e wrapper.Entity,
+	v string,
+	dv string,
+) (bool, error) {
 	m, err := e.GetMethod()
 	if err != nil {
 		return false, fmt.Errorf("can't get method: %w", err)
@@ -270,8 +311,12 @@ func (f *MallebaleFilter) verifyMethod(e wrapper.Entity, v string, dv string) (b
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyURI(e wrapper.Entity, logger zerolog.Logger,
-	uris malleable.URIs, transforms []malleable.Function) (bool, error) {
+func (f *MallebaleFilter) verifyURI(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+	uris malleable.URIs,
+	transforms []malleable.Function,
+) (bool, error) {
 	var found bool
 
 	url, err := e.GetURL()
@@ -287,7 +332,11 @@ func (f *MallebaleFilter) verifyURI(e wrapper.Entity, logger zerolog.Logger,
 		if onlyURI || hasAppended {
 			found = true
 			if hasAppended {
-				found = f.verifyDecoding([]byte(url.Path[len(uri):]), logger, transforms)
+				found = f.verifyDecoding(
+					[]byte(url.Path[len(uri):]),
+					logger,
+					transforms,
+				)
 			}
 			if found {
 				return true, nil
@@ -298,8 +347,12 @@ func (f *MallebaleFilter) verifyURI(e wrapper.Entity, logger zerolog.Logger,
 	return false, nil
 }
 
-func (f *MallebaleFilter) verifyParameters(e wrapper.Entity, logger zerolog.Logger,
-	parameters []malleable.Parameter, transforms []malleable.Function) (bool, error) {
+func (f *MallebaleFilter) verifyParameters(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+	parameters []malleable.Parameter,
+	transforms []malleable.Function,
+) (bool, error) {
 	url, err := e.GetURL()
 	if err != nil {
 		return false, fmt.Errorf("can't get url: %w", err)
@@ -321,8 +374,12 @@ func (f *MallebaleFilter) verifyParameters(e wrapper.Entity, logger zerolog.Logg
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyHeaders(e wrapper.Entity, logger zerolog.Logger,
-	pheaders []malleable.Header, transforms []malleable.Function) (bool, error) {
+func (f *MallebaleFilter) verifyHeaders(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+	pheaders []malleable.Header,
+	transforms []malleable.Function,
+) (bool, error) {
 	headers, err := e.GetHeaders()
 	if err != nil {
 		return false, fmt.Errorf("can't get headers: %w", err)
@@ -353,8 +410,11 @@ func (f *MallebaleFilter) verifyHeaders(e wrapper.Entity, logger zerolog.Logger,
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyBody(e wrapper.Entity, logger zerolog.Logger,
-	transforms []malleable.Function) (bool, error) {
+func (f *MallebaleFilter) verifyBody(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+	transforms []malleable.Function,
+) (bool, error) {
 	body, err := e.GetBody()
 	if err != nil {
 		return false, fmt.Errorf("can't get body: %w", err)
@@ -373,8 +433,11 @@ func (f *MallebaleFilter) verifyStagerURL(e wrapper.Entity) (bool, error) {
 	return cs == 92 || cs == 93, nil
 }
 
-func (f *MallebaleFilter) verifyDecoding(data []byte, logger zerolog.Logger,
-	transforms []malleable.Function) bool {
+func (f *MallebaleFilter) verifyDecoding(
+	data []byte,
+	logger zerolog.Logger,
+	transforms []malleable.Function,
+) bool {
 	var (
 		err error
 		n   int
@@ -425,5 +488,9 @@ func (f *MallebaleFilter) verifyDecoding(data []byte, logger zerolog.Logger,
 }
 
 func (f *MallebaleFilter) String() string {
-	return fmt.Sprintf("Malleable(profile=%s, exclude=%s)", f.path, FormatStringerSlice(f.exclude))
+	return fmt.Sprintf(
+		"Malleable(profile=%s, exclude=%s)",
+		f.path,
+		FormatStringerSlice(f.exclude),
+	)
 }

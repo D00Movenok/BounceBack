@@ -21,7 +21,10 @@ type MockFilter struct {
 	called bool
 }
 
-func (m *MockFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+func (m *MockFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	params := m.Called(e, logger)
 	return params.Bool(0), params.Error(1)
 }
@@ -187,17 +190,36 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 			}
 			for k, v := range tt.args.fs {
 				if v.called {
-					v.On("Apply", mock.Anything, mock.Anything).Return(v.res, v.err)
+					v.
+						On("Apply", mock.Anything, mock.Anything).
+						Return(v.res, v.err)
 				}
 				fs.Filters[k] = v
 			}
 
 			filter, err := filters.NewCompositeAndFilter(nil, fs, tt.args.cfg)
-			require.Equalf(t, tt.want.createErr, err != nil, "NewCompositeAndFilter() error mismatch: %s", err)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewCompositeAndFilter() error mismatch: %s",
+				err,
+			)
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+				require.Equalf(
+					t,
+					tt.want.applyErr,
+					err != nil,
+					"Apply() error mismatch: %s",
+					err,
+				)
+				require.Equal(
+					t,
+					tt.want.res,
+					res,
+					"Apply() result mismatch",
+				)
 
 				for _, v := range tt.args.fs {
 					if v.called {
@@ -366,17 +388,36 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 			}
 			for k, v := range tt.args.fs {
 				if v.called {
-					v.On("Apply", mock.Anything, mock.Anything).Return(v.res, v.err)
+					v.
+						On("Apply", mock.Anything, mock.Anything).
+						Return(v.res, v.err)
 				}
 				fs.Filters[k] = v
 			}
 
 			filter, err := filters.NewCompositeOrFilter(nil, fs, tt.args.cfg)
-			require.Equalf(t, tt.want.createErr, err != nil, "NewCompositeOrFilter() error mismatch: %s", err)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewCompositeOrFilter() error mismatch: %s",
+				err,
+			)
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+				require.Equalf(
+					t,
+					tt.want.applyErr,
+					err != nil,
+					"Apply() error mismatch: %s",
+					err,
+				)
+				require.Equal(
+					t,
+					tt.want.res,
+					res,
+					"Apply() result mismatch",
+				)
 
 				for _, v := range tt.args.fs {
 					if v.called {
@@ -530,17 +571,36 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 			}
 			for k, v := range tt.args.fs {
 				if v.called {
-					v.On("Apply", mock.Anything, mock.Anything).Return(v.res, v.err)
+					v.
+						On("Apply", mock.Anything, mock.Anything).
+						Return(v.res, v.err)
 				}
 				fs.Filters[k] = v
 			}
 
 			filter, err := filters.NewCompositeNotFilter(nil, fs, tt.args.cfg)
-			require.Equalf(t, tt.want.createErr, err != nil, "NewCompositeNotFilter() error mismatch: %s", err)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewCompositeNotFilter() error mismatch: %s",
+				err,
+			)
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+				require.Equalf(
+					t,
+					tt.want.applyErr,
+					err != nil,
+					"Apply() error mismatch: %s",
+					err,
+				)
+				require.Equal(
+					t,
+					tt.want.res,
+					res,
+					"Apply() result mismatch",
+				)
 
 				for _, v := range tt.args.fs {
 					if v.called {

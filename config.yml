@@ -171,9 +171,11 @@ proxies:
     # tls:
     #   cert: testdata/tls/cert.pem
     #   key: testdata/tls/key.pem
-    on_filter_trigger:
+    filter_settings:
       action: redirect
       url: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+      noreject_threshold: 5
+      reject_threshold: 5
     filters:
       # - default_ip_allowlist
       - default_ip_banlist

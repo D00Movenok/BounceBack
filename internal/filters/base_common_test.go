@@ -38,12 +38,14 @@ func (m *MockEntity) GetBody() ([]byte, error) {
 
 func (m *MockEntity) GetCookies() ([]*http.Cookie, error) {
 	args := m.Called()
-	return args.Get(0).([]*http.Cookie), args.Error(1) //nolint: wrapcheck // mock
+	//nolint: wrapcheck // mock
+	return args.Get(0).([]*http.Cookie), args.Error(1)
 }
 
 func (m *MockEntity) GetHeaders() (map[string][]string, error) {
 	args := m.Called()
-	return args.Get(0).(map[string][]string), args.Error(1) //nolint: wrapcheck // mock
+	//nolint: wrapcheck // mock
+	return args.Get(0).(map[string][]string), args.Error(1)
 }
 
 func (m *MockEntity) GetURL() (*url.URL, error) {
@@ -297,16 +299,37 @@ func TestBase_IPFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filter, err := filters.NewIPFilter(nil, filters.FilterSet{}, tt.args.cfg)
-			require.Equalf(t, tt.want.createErr, err != nil, "NewIPFilter() error mismatch: %s", err)
+			filter, err := filters.NewIPFilter(
+				nil,
+				filters.FilterSet{},
+				tt.args.cfg,
+			)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewIPFilter() error mismatch: %s",
+				err,
+			)
 
 			if !tt.want.createErr {
 				e := new(MockEntity)
 				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
 				res, err := filter.Apply(e, log.Logger)
-				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+				require.Equalf(
+					t,
+					tt.want.applyErr,
+					err != nil,
+					"Apply() error mismatch: %s",
+					err,
+				)
+				require.Equal(
+					t,
+					tt.want.res,
+					res,
+					"Apply() result mismatch",
+				)
 				e.AssertExpectations(t)
 			}
 		})
@@ -576,13 +599,32 @@ func TestBase_TimeFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filter, err := filters.NewTimeFilter(nil, filters.FilterSet{}, tt.args.cfg)
-			require.Equalf(t, tt.want.createErr, err != nil, "NewTimeFilter() error mismatch: %s", err)
+			filter, err := filters.NewTimeFilter(
+				nil,
+				filters.FilterSet{},
+				tt.args.cfg,
+			)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewTimeFilter() error mismatch: %s",
+				err,
+			)
 
 			if !tt.want.createErr {
 				res, err := filter.Apply(nil, log.Logger)
-				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+				require.Equalf(t,
+					tt.want.applyErr,
+					err != nil,
+					"Apply() error mismatch: %s",
+					err,
+				)
+				require.Equal(t,
+					tt.want.res,
+					res,
+					"Apply() result mismatch",
+				)
 			}
 		})
 	}
@@ -734,8 +776,18 @@ func TestBase_GeoFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := database.New("", true)
 			require.NoError(t, err, "can't create db")
-			filter, err := filters.NewGeolocationFilter(db, filters.FilterSet{}, tt.args.cfg)
-			require.Equalf(t, tt.want.createErr, err != nil, "NewGeolocationFilter() error mismatch: %s", err)
+			filter, err := filters.NewGeolocationFilter(
+				db,
+				filters.FilterSet{},
+				tt.args.cfg,
+			)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewGeolocationFilter() error mismatch: %s",
+				err,
+			)
 
 			if !tt.want.createErr {
 				const geolocationInfoCount = 2
@@ -744,8 +796,19 @@ func TestBase_GeoFilter(t *testing.T) {
 					e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
 					res, err := filter.Apply(e, log.Logger)
-					require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-					require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+					require.Equalf(
+						t,
+						tt.want.applyErr,
+						err != nil,
+						"Apply() error mismatch: %s",
+						err,
+					)
+					require.Equal(
+						t,
+						tt.want.res,
+						res,
+						"Apply() result mismatch",
+					)
 					e.AssertExpectations(t)
 
 					// clear db so all geo getters will be tested
@@ -910,16 +973,37 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := database.New("", true)
 			require.NoError(t, err, "can't create db")
-			filter, err := filters.NewReverseLookupFilter(db, filters.FilterSet{}, tt.args.cfg)
-			require.Equalf(t, tt.want.createErr, err != nil, "NewReverseLookupFilter() error mismatch: %s", err)
+			filter, err := filters.NewReverseLookupFilter(
+				db,
+				filters.FilterSet{},
+				tt.args.cfg,
+			)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewReverseLookupFilter() error mismatch: %s",
+				err,
+			)
 
 			if !tt.want.createErr {
 				e := new(MockEntity)
 				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
 				res, err := filter.Apply(e, log.Logger)
-				require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-				require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+				require.Equalf(
+					t,
+					tt.want.applyErr,
+					err != nil,
+					"Apply() error mismatch: %s",
+					err,
+				)
+				require.Equal(
+					t,
+					tt.want.res,
+					res,
+					"Apply() result mismatch",
+				)
 				e.AssertExpectations(t)
 
 				// clear db so all geo getters will be tested

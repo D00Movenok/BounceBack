@@ -3,7 +3,7 @@ package database
 const ReverseLookupPrefix string = "ip-lookup-"
 
 type ReverseLookup struct {
-	Domains []string `json:"domains"`
+	Domains []string
 }
 
 func (db *DB) GetReverseLookup(ip string) (*ReverseLookup, error) {

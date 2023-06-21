@@ -16,7 +16,11 @@ var (
 	ErrInvalidFilterArgs = errors.New("invalid filter arguments")
 )
 
-func NewCompositeAndFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewCompositeAndFilter(
+	_ *database.DB,
+	fs FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var params CompositeAndFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -39,7 +43,11 @@ func NewCompositeAndFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig
 	return f, nil
 }
 
-func NewCompositeOrFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewCompositeOrFilter(
+	_ *database.DB,
+	fs FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var params CompositeOrFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -62,7 +70,11 @@ func NewCompositeOrFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig)
 	return f, nil
 }
 
-func NewCompositeNotFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewCompositeNotFilter(
+	_ *database.DB,
+	fs FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var params CompositeNotFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -83,14 +95,17 @@ func NewCompositeNotFilter(_ *database.DB, fs FilterSet, cfg common.FilterConfig
 }
 
 type CompositeAndFilterParams struct {
-	Filters []string `json:"filters" mapstructure:"filters"`
+	Filters []string `mapstructure:"filters"`
 }
 
 type CompositeAndFilter struct {
 	filters []Filter
 }
 
-func (f CompositeAndFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+func (f CompositeAndFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	for _, filter := range f.filters {
 		res, err := filter.Apply(e, logger)
 		if err != nil {
@@ -112,14 +127,17 @@ func (f CompositeAndFilter) String() string {
 }
 
 type CompositeOrFilterParams struct {
-	Filters []string `json:"filters" mapstructure:"filters"`
+	Filters []string `mapstructure:"filters"`
 }
 
 type CompositeOrFilter struct {
 	filters []Filter
 }
 
-func (r CompositeOrFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+func (r CompositeOrFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	for _, filter := range r.filters {
 		res, err := filter.Apply(e, logger)
 		if err != nil {
@@ -141,14 +159,17 @@ func (r CompositeOrFilter) String() string {
 }
 
 type CompositeNotFilterParams struct {
-	Filter string `json:"filter" mapstructure:"filter"`
+	Filter string `mapstructure:"filter"`
 }
 
 type CompositeNotFilter struct {
 	filter Filter
 }
 
-func (f CompositeNotFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+func (f CompositeNotFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	res, err := f.filter.Apply(e, logger)
 	if err != nil {
 		return false, fmt.Errorf("error in filter %T: %w", f.filter, err)

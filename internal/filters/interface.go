@@ -14,5 +14,13 @@ type Filter interface {
 	fmt.Stringer
 }
 
-type FilterBaseCreator func(db *database.DB, fs FilterSet, cfg common.FilterConfig) (Filter, error)
-type FilterWrapperCreator func(filter Filter, cfg common.FilterConfig) Filter
+type FilterBaseCreator func(
+	db *database.DB,
+	fs FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error)
+
+type FilterWrapperCreator func(
+	filter Filter,
+	cfg common.FilterConfig,
+) Filter

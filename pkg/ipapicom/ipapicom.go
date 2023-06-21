@@ -61,11 +61,19 @@ type client struct {
 }
 
 // GetLocationForIp retrieves the supplied IP address's location information.
-func (c *client) GetLocationForIP(ctx context.Context, ip string) (*Location, error) {
+func (c *client) GetLocationForIP(
+	ctx context.Context,
+	ip string,
+) (*Location, error) {
 	return getLocation(ctx, c.FmtURL, ip, c.HTTPClient)
 }
 
-func getLocation(ctx context.Context, fmtURL string, ip string, httpClient *http.Client) (*Location, error) {
+func getLocation(
+	ctx context.Context,
+	fmtURL string,
+	ip string,
+	httpClient *http.Client,
+) (*Location, error) {
 	url := fmt.Sprintf(fmtURL, ip)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -88,9 +96,15 @@ func getLocation(ctx context.Context, fmtURL string, ip string, httpClient *http
 	if resp.StatusCode != http.StatusOK || l.Status != "success" {
 		switch l.Message {
 		case "reserved range":
-			return nil, fmt.Errorf("can't catch ip geolocation: %w", ErrReservedRange)
+			return nil, fmt.Errorf(
+				"can't catch ip geolocation: %w",
+				ErrReservedRange,
+			)
 		default:
-			return nil, fmt.Errorf("can't catch ip geolocation: %s", l.Message)
+			return nil, fmt.Errorf(
+				"can't catch ip geolocation: %s",
+				l.Message,
+			)
 		}
 	}
 

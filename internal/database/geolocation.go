@@ -3,14 +3,14 @@ package database
 const GeolocationPrefix string = "ip-geo-"
 
 type Geolocation struct {
-	Organisation []string `json:"organisation"`
-	CountryCode  string   `json:"country_code"`
-	Country      string   `json:"country"`
-	RegionCode   string   `json:"region_code"`
-	Region       string   `json:"region"`
-	City         string   `json:"city"`
-	Timezone     string   `json:"timezone"`
-	ASN          string   `json:"asn"`
+	Organisation []string
+	CountryCode  string
+	Country      string
+	RegionCode   string
+	Region       string
+	City         string
+	Timezone     string
+	ASN          string
 }
 
 func (db *DB) GetGeolocation(ip string) (*Geolocation, error) {

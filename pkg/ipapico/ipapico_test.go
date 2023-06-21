@@ -90,8 +90,19 @@ func TestGetLocation(t *testing.T) {
 			c := ipapico.NewClient()
 			ctx := context.Background()
 			l, err := c.GetLocationForIP(ctx, tt.args.ip)
-			require.Equalf(t, tt.wantErr, err != nil, "GetLocationForIP() get error: %s", err)
-			require.Equal(t, tt.want, l, "GetLocationForIP() ip geolocation information mismatch")
+			require.Equalf(
+				t,
+				tt.wantErr,
+				err != nil,
+				"GetLocationForIP() get error: %s",
+				err,
+			)
+			require.Equal(
+				t,
+				tt.want,
+				l,
+				"GetLocationForIP() ip geolocation information mismatch",
+			)
 		})
 	}
 }

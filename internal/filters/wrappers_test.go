@@ -55,12 +55,28 @@ func TestWrappers_NotFilter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.args.filter.called {
-				tt.args.filter.On("Apply", mock.Anything, mock.Anything).Return(tt.args.filter.res, tt.args.filter.err)
+				tt.args.filter.
+					On("Apply", mock.Anything, mock.Anything).
+					Return(tt.args.filter.res, tt.args.filter.err)
 			}
-			filter := filters.NewNotWrapper(tt.args.filter, common.FilterConfig{})
+			filter := filters.NewNotWrapper(
+				tt.args.filter,
+				common.FilterConfig{},
+			)
 			res, err := filter.Apply(nil, log.Logger)
-			require.Equalf(t, tt.want.applyErr, err != nil, "Apply() error mismatch: %s", err)
-			require.Equal(t, tt.want.res, res, "Apply() result mismatch")
+			require.Equalf(
+				t,
+				tt.want.applyErr,
+				err != nil,
+				"Apply() error mismatch: %s",
+				err,
+			)
+			require.Equal(
+				t,
+				tt.want.res,
+				res,
+				"Apply() result mismatch",
+			)
 			tt.args.filter.AssertExpectations(t)
 		})
 	}

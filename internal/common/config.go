@@ -10,33 +10,36 @@ const (
 )
 
 type FilterConfig struct {
-	Name   string         `json:"name" mapstructure:"name"`
-	Type   string         `json:"type" mapstructure:"type"`
-	Params map[string]any `json:"params" mapstructure:"params"`
+	Name   string         `mapstructure:"name"`
+	Type   string         `mapstructure:"type"`
+	Params map[string]any `mapstructure:"params"`
 }
 
 type TLS struct {
-	Cert string `json:"cert" mapstructure:"cert"`
-	Key  string `json:"key" mapstructure:"key"`
+	Cert string `mapstructure:"cert"`
+	Key  string `mapstructure:"key"`
 }
 
-type OnFilterTrigger struct {
-	Action string `json:"action" mapstructure:"action"`
-	URL    string `json:"url" mapstructure:"url"`
+type FilterSettings struct {
+	Action string `mapstructure:"action"`
+	URL    string `mapstructure:"url"`
+
+	NoRejectThreshold uint `mapstructure:"noreject_threshold"`
+	RejectThreshold   uint `mapstructure:"reject_threshold"`
 }
 
 type ProxyConfig struct {
-	Name      string          `json:"name" mapstructure:"name"`
-	Type      string          `json:"type" mapstructure:"type"`
-	Listen    string          `json:"listen" mapstructure:"listen"`
-	Target    string          `json:"target" mapstructure:"target"`
-	Timeout   time.Duration   `json:"timeout" mapstructure:"timeout"`
-	TLS       *TLS            `json:"tls" mapstructure:"tls"`
-	Filters   []string        `json:"filters" mapstructure:"filters"`
-	OnTrigger OnFilterTrigger `json:"on_filter_trigger" mapstructure:"on_filter_trigger"`
+	Name           string         `mapstructure:"name"`
+	Type           string         `mapstructure:"type"`
+	Listen         string         `mapstructure:"listen"`
+	Target         string         `mapstructure:"target"`
+	Timeout        time.Duration  `mapstructure:"timeout"`
+	TLS            *TLS           `mapstructure:"tls"`
+	FilterSettings FilterSettings `mapstructure:"filter_settings"`
+	Filters        []string       `mapstructure:"filters"`
 }
 
 type Config struct {
-	Filters []FilterConfig `json:"filters" mapstructure:"filters"`
-	Proxies []ProxyConfig  `json:"proxies" mapstructure:"proxies"`
+	Filters []FilterConfig `mapstructure:"filters"`
+	Proxies []ProxyConfig  `mapstructure:"proxies"`
 }

@@ -35,9 +35,24 @@ const banner = `
 var (
 	version = "v0.0.0-next"
 
-	configFile = pflag.StringP("config", "c", "config.yml", "Path to the config file in YAML format")
-	logFile    = pflag.StringP("log", "l", "bounceback.log", "Path to the log file")
-	verbose    = pflag.BoolP("verbose", "v", false, "Verbose logging")
+	configFile = pflag.StringP(
+		"config",
+		"c",
+		"config.yml",
+		"Path to the config file in YAML format",
+	)
+	logFile = pflag.StringP(
+		"log",
+		"l",
+		"bounceback.log",
+		"Path to the log file",
+	)
+	verbose = pflag.BoolP(
+		"verbose",
+		"v",
+		false,
+		"Verbose logging",
+	)
 )
 
 func main() {
@@ -58,7 +73,10 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	<-c
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5) //nolint:gomnd
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Second*5, //nolint:gomnd
+	)
 	defer cancel()
 
 	shutdownProxyManager(ctx, m)
@@ -78,7 +96,11 @@ func initPflag() {
 func initLogger() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	fileWriter, err := os.OpenFile(*logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	fileWriter, err := os.OpenFile(
+		*logFile,
+		os.O_WRONLY|os.O_CREATE|os.O_APPEND,
+		0600,
+	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Can't create/open log file")
 	}

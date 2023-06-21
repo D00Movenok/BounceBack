@@ -37,7 +37,8 @@ func netbiosDecode(data []byte) ([]byte, error) {
 	}
 	d := bytes.ToUpper(data)
 	for i := 0; i < len(d); i += 2 {
-		d[i/2] = ((d[i] - byte('A')) << 4) + ((d[i+1] - byte('A')) & 0xF) //nolint:gomnd
+		d[i/2] = ((d[i] - byte('A')) << 4) + //nolint:gomnd
+			((d[i+1] - byte('A')) & 0xF) //nolint:gomnd
 	}
 	return d[:len(d)/2], nil
 }

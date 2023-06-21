@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
+	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/base"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
@@ -28,28 +29,36 @@ var (
 	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
 )
 
-func NewProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
+func NewProxy(
+	cfg common.ProxyConfig,
+	fs *filters.FilterSet,
+	db *database.DB,
+) (*Proxy, error) {
 	target, err := url.Parse(cfg.Target)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse target url: %w", err)
 	}
 
 	var action *url.URL
-	if cfg.OnTrigger.Action == common.ActionProxy || cfg.OnTrigger.Action == common.ActionRedirect {
-		action, err = url.Parse(cfg.OnTrigger.URL)
+	if cfg.FilterSettings.Action == common.ActionProxy ||
+		cfg.FilterSettings.Action == common.ActionRedirect {
+		action, err = url.Parse(cfg.FilterSettings.URL)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse action url: %w", err)
 		}
 	}
 
-	baseProxy, err := base.NewBaseProxy(cfg, fs)
+	baseProxy, err := base.NewBaseProxy(cfg, fs, db)
 	if err != nil {
 		return nil, fmt.Errorf("can't create base proxy: %w", err)
 	}
 
 	if cfg.Timeout == 0 {
 		cfg.Timeout = defaultTimeout
-		baseProxy.Logger.Debug().Msgf("Using default timeout: %s", cfg.Timeout)
+		baseProxy.Logger.Debug().Msgf(
+			"Using default timeout: %s",
+			cfg.Timeout,
+		)
 	}
 
 	p := &Proxy{
@@ -59,7 +68,10 @@ func NewProxy(cfg common.ProxyConfig, fs *filters.FilterSet) (*Proxy, error) {
 
 		client: &http.Client{
 			Timeout: cfg.Timeout,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			CheckRedirect: func(
+				req *http.Request,
+				via []*http.Request,
+			) error {
 				return http.ErrUseLastResponse
 			},
 		},
@@ -133,7 +145,12 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (p *Proxy) proxyRequest(url *url.URL, w http.ResponseWriter, r *http.Request, logger zerolog.Logger) {
+func (p *Proxy) proxyRequest(
+	url *url.URL,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger zerolog.Logger,
+) {
 	r.URL.Scheme = url.Scheme
 	r.URL.Host = url.Host
 
@@ -163,9 +180,13 @@ func (p *Proxy) proxyRequest(url *url.URL, w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (p *Proxy) processVerdict(w http.ResponseWriter, r *http.Request, logger zerolog.Logger) {
+func (p *Proxy) processVerdict(
+	w http.ResponseWriter,
+	r *http.Request,
+	logger zerolog.Logger,
+) {
 	cfg := p.GetConfig()
-	switch cfg.OnTrigger.Action {
+	switch cfg.FilterSettings.Action {
 	case common.ActionProxy:
 		p.proxyRequest(p.ActionURL, w, r, logger)
 	case common.ActionRedirect:
@@ -180,7 +201,9 @@ func (p *Proxy) processVerdict(w http.ResponseWriter, r *http.Request, logger ze
 		}
 		_ = conn.Close()
 	default:
-		logger.Warn().Msg("Request was filtered, but action is None")
+		logger.Warn().Msg(
+			"Request was filtered, but action is None or unknown",
+		)
 		p.proxyRequest(p.TargetURL, w, r, logger)
 	}
 }
@@ -194,12 +217,7 @@ func (p *Proxy) processRequest(r *http.Request, logger zerolog.Logger) bool {
 	r.Header.Set("Host", r.Host)
 
 	reqEntity := &wrapper.HTTPRequest{Request: r}
-	if err = p.RunFilters(reqEntity, logger); err != nil {
-		logger.Error().Err(err).Str("action", p.GetConfig().OnTrigger.Action).Msg("Filtered")
-		return false
-	}
-
-	return true
+	return p.RunFilters(reqEntity, logger)
 }
 
 func (p *Proxy) getHandler() http.HandlerFunc {
@@ -221,11 +239,13 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 func (p *Proxy) serve() {
 	defer p.WG.Done()
 	if p.TLSConfig != nil {
-		if err := p.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+		err := p.server.ListenAndServeTLS("", "")
+		if err != nil && err != http.ErrServerClosed {
 			p.Logger.Fatal().Err(err).Msg("Error in server")
 		}
 	} else {
-		if err := p.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		err := p.server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
 			p.Logger.Fatal().Err(err).Msg("Error in server")
 		}
 	}

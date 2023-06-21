@@ -20,7 +20,10 @@ func (fs *FilterSet) Get(name string) (Filter, bool) {
 	return nil, false
 }
 
-func NewFilterSet(db *database.DB, cfg []common.FilterConfig) (*FilterSet, error) {
+func NewFilterSet(
+	db *database.DB,
+	cfg []common.FilterConfig,
+) (*FilterSet, error) {
 	fs := FilterSet{Filters: map[string]Filter{}}
 
 	for _, fc := range cfg {
@@ -37,10 +40,17 @@ func NewFilterSet(db *database.DB, cfg []common.FilterConfig) (*FilterSet, error
 		lastToken := tokens[len(tokens)-1]
 		if newFilter, ok := GetFilterBase()[lastToken]; ok {
 			if filter, err = newFilter(db, fs, fc); err != nil {
-				return nil, fmt.Errorf("can't create base filter for %s: %w", fc.Name, err)
+				return nil, fmt.Errorf(
+					"can't create base filter for %s: %w",
+					fc.Name,
+					err,
+				)
 			}
 		} else {
-			return nil, fmt.Errorf("invalid filter %s: last token invalid", fc.Type)
+			return nil, fmt.Errorf(
+				"invalid filter %s: last token invalid",
+				fc.Type,
+			)
 		}
 
 		// iterate tokens without last
@@ -49,13 +59,20 @@ func NewFilterSet(db *database.DB, cfg []common.FilterConfig) (*FilterSet, error
 			if wrapperCreator, ok := GetFilterWrappers()[wrapperName]; ok {
 				filter = wrapperCreator(filter, fc)
 			} else {
-				return nil, fmt.Errorf("unexpected token %s for %s", wrapperName, fc.Name)
+				return nil, fmt.Errorf(
+					"unexpected token %s for %s",
+					wrapperName,
+					fc.Name,
+				)
 			}
 		}
 
 		fs.Filters[fc.Name] = filter
 
-		log.Debug().Str("name", fc.Name).Stringer("filter", filter).Msg("Created new filter")
+		log.Debug().
+			Str("filter", fc.Name).
+			Stringer("rule", filter).
+			Msg("Created new filter")
 	}
 
 	return &fs, nil

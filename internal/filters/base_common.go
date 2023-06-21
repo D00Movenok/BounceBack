@@ -27,7 +27,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func NewIPFilter(_ *database.DB, _ FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewIPFilter(
+	_ *database.DB,
+	_ FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var (
 		params IPFilterParams
 		subnet netip.Prefix
@@ -69,7 +73,11 @@ func NewIPFilter(_ *database.DB, _ FilterSet, cfg common.FilterConfig) (Filter, 
 	return filter, nil
 }
 
-func NewTimeFilter(_ *database.DB, _ FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewTimeFilter(
+	_ *database.DB,
+	_ FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var params TimeParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -124,7 +132,11 @@ func NewTimeFilter(_ *database.DB, _ FilterSet, cfg common.FilterConfig) (Filter
 	return filter, nil
 }
 
-func NewGeolocationFilter(db *database.DB, _ FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewGeolocationFilter(
+	db *database.DB,
+	_ FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var params GeoParams
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -153,7 +165,8 @@ func NewGeolocationFilter(db *database.DB, _ FilterSet, cfg common.FilterConfig)
 			ASN:          make([]*regexp.Regexp, 0, len(gc.ASN)),
 		}
 
-		// iterate all fields of params.Geolocations, converts them to regexes and put to gr
+		// iterate all fields of params.Geolocations,
+		// converts them to regexes and put to gr
 		g := reflect.ValueOf(gc)
 		for i := 0; i < g.NumField(); i++ {
 			fn := g.Type().Field(i).Name
@@ -162,7 +175,12 @@ func NewGeolocationFilter(db *database.DB, _ FilterSet, cfg common.FilterConfig)
 				if err != nil {
 					return nil, fmt.Errorf("can't compile regex: %w", err)
 				}
-				reArr, _ := reflect.ValueOf(gr).Elem().FieldByName(fn).Addr().Interface().(*[]*regexp.Regexp)
+				reArr, _ := reflect.
+					ValueOf(gr).
+					Elem().
+					FieldByName(fn).
+					Addr().
+					Interface().(*[]*regexp.Regexp)
 				*reArr = append(*reArr, re)
 			}
 		}
@@ -172,7 +190,11 @@ func NewGeolocationFilter(db *database.DB, _ FilterSet, cfg common.FilterConfig)
 	return filter, nil
 }
 
-func NewReverseLookupFilter(db *database.DB, _ FilterSet, cfg common.FilterConfig) (Filter, error) {
+func NewReverseLookupFilter(
+	db *database.DB,
+	_ FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
 	var (
 		params ReverseLookupParams
 		dns    netip.AddrPort
@@ -218,7 +240,7 @@ func NewReverseLookupFilter(db *database.DB, _ FilterSet, cfg common.FilterConfi
 }
 
 type IPFilterParams struct {
-	Path string `json:"list" mapstructure:"list"`
+	Path string `mapstructure:"list"`
 }
 
 type IPFilter struct {
@@ -230,16 +252,22 @@ type IPFilter struct {
 func (f *IPFilter) Apply(e wrapper.Entity, _ zerolog.Logger) (bool, error) {
 	ip := e.GetIP()
 
-	ok := slices.ContainsFunc(f.subnetBanlist, func(i netip.Prefix) bool {
-		return i.Contains(ip)
-	})
+	ok := slices.ContainsFunc(
+		f.subnetBanlist,
+		func(i netip.Prefix) bool {
+			return i.Contains(ip)
+		},
+	)
 	if ok {
 		return true, nil
 	}
 
-	ok = slices.ContainsFunc(f.ipBanlist, func(i netip.Addr) bool {
-		return i.Compare(ip) == 0
-	})
+	ok = slices.ContainsFunc(
+		f.ipBanlist,
+		func(i netip.Addr) bool {
+			return i.Compare(ip) == 0
+		},
+	)
 	if ok {
 		return true, nil
 	}
@@ -252,10 +280,10 @@ func (f *IPFilter) String() string {
 }
 
 type TimeParams struct {
-	From     string   `json:"from" mapstructure:"from"`
-	To       string   `json:"to" mapstructure:"to"`
-	Location string   `json:"timezone" mapstructure:"timezone"`
-	Weekdays []string `json:"weekdays" mapstructure:"weekdays"`
+	From     string   `mapstructure:"from"`
+	To       string   `mapstructure:"to"`
+	Location string   `mapstructure:"timezone"`
+	Weekdays []string `mapstructure:"weekdays"`
 }
 
 type TimeFilter struct {
@@ -273,7 +301,11 @@ func (f *TimeFilter) Apply(_ wrapper.Entity, _ zerolog.Logger) (bool, error) {
 		return false, nil
 	}
 
-	now, _ := time.ParseInLocation("15:04", fmt.Sprintf("%02d:%02d", n.Hour(), n.Minute()), f.loc)
+	now, _ := time.ParseInLocation(
+		"15:04",
+		fmt.Sprintf("%02d:%02d", n.Hour(), n.Minute()),
+		f.loc,
+	)
 	fromLtTo := f.from.Before(f.to) && (now.Before(f.from) || now.After(f.to))
 	fromGtTo := f.from.After(f.to) && (now.Before(f.from) && now.After(f.to))
 	if fromLtTo || fromGtTo {
@@ -284,24 +316,31 @@ func (f *TimeFilter) Apply(_ wrapper.Entity, _ zerolog.Logger) (bool, error) {
 }
 
 func (f *TimeFilter) String() string {
-	return fmt.Sprintf("Time(from=%02d:%02d, to=%02d:%02d, weekdays=%s, timezone=%s)",
-		f.from.Hour(), f.from.Minute(), f.to.Hour(), f.to.Minute(), FormatStringerSlice(f.weekdays), f.loc.String())
+	return fmt.Sprintf(
+		"Time(from=%02d:%02d, to=%02d:%02d, weekdays=%s, timezone=%s)",
+		f.from.Hour(),
+		f.from.Minute(),
+		f.to.Hour(),
+		f.to.Minute(),
+		FormatStringerSlice(f.weekdays),
+		f.loc.String(),
+	)
 }
 
 // NOTE: GeoParam and GeoRegex must have same field names.
 type GeoParam struct {
-	Organisation []string `json:"organisation" mapstructure:"organisation"`
-	CountryCode  []string `json:"country_code" mapstructure:"country_code"`
-	Country      []string `json:"country" mapstructure:"country"`
-	RegionCode   []string `json:"region_code" mapstructure:"region_code"`
-	Region       []string `json:"region" mapstructure:"region"`
-	City         []string `json:"city" mapstructure:"city"`
-	Timezone     []string `json:"timezone" mapstructure:"timezone"`
-	ASN          []string `json:"asn" mapstructure:"asn"`
+	Organisation []string `mapstructure:"organisation"`
+	CountryCode  []string `mapstructure:"country_code"`
+	Country      []string `mapstructure:"country"`
+	RegionCode   []string `mapstructure:"region_code"`
+	Region       []string `mapstructure:"region"`
+	City         []string `mapstructure:"city"`
+	Timezone     []string `mapstructure:"timezone"`
+	ASN          []string `mapstructure:"asn"`
 }
 
 type GeoParams struct {
-	Geolocations []GeoParam `json:"geolocations" mapstructure:"geolocations"`
+	Geolocations []GeoParam `mapstructure:"geolocations"`
 }
 
 type GeoRegex struct {
@@ -317,10 +356,16 @@ type GeoRegex struct {
 
 func (r *GeoRegex) String() string {
 	return fmt.Sprintf(
-		"geo(organisation=%s, country_code=%s, country=%s, region_code=%s, region=%s, city=%s, timezone=%s, asn=%s)",
-		FormatStringerSlice(r.Organisation), FormatStringerSlice(r.CountryCode), FormatStringerSlice(r.Country),
-		FormatStringerSlice(r.RegionCode), FormatStringerSlice(r.Region), FormatStringerSlice(r.City),
-		FormatStringerSlice(r.Timezone), FormatStringerSlice(r.ASN),
+		"geo(organisation=%s, country_code=%s, country=%s, "+
+			"region_code=%s, region=%s, city=%s, timezone=%s, asn=%s)",
+		FormatStringerSlice(r.Organisation),
+		FormatStringerSlice(r.CountryCode),
+		FormatStringerSlice(r.Country),
+		FormatStringerSlice(r.RegionCode),
+		FormatStringerSlice(r.Region),
+		FormatStringerSlice(r.City),
+		FormatStringerSlice(r.Timezone),
+		FormatStringerSlice(r.ASN),
 	)
 }
 
@@ -332,7 +377,10 @@ type GeoFilter struct {
 	ipapicom   ipapicom.Client
 }
 
-func (f *GeoFilter) getGeoInfoByIP(ip string, logger zerolog.Logger) (*database.Geolocation, error) {
+func (f *GeoFilter) getGeoInfoByIP(
+	ip string,
+	logger zerolog.Logger,
+) (*database.Geolocation, error) {
 	geo, err := f.db.GetGeolocation(ip)
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, fmt.Errorf("can't get cached geolocation: %w", err)
@@ -348,7 +396,10 @@ func (f *GeoFilter) getGeoInfoByIP(ip string, logger zerolog.Logger) (*database.
 		// TODO: maybe add context with timeout
 		g, err = f.ipapico.GetLocationForIP(context.Background(), ip)
 		if err != nil && !errors.Is(err, ipapico.ErrReservedRange) {
-			return nil, fmt.Errorf("can't get geolocation with ipapi.co: %w", err)
+			return nil, fmt.Errorf(
+				"can't get geolocation with ipapi.co: %w",
+				err,
+			)
 		}
 
 		if g != nil {
@@ -366,7 +417,10 @@ func (f *GeoFilter) getGeoInfoByIP(ip string, logger zerolog.Logger) (*database.
 		// TODO: maybe add context with timeout
 		g, err = f.ipapicom.GetLocationForIP(context.Background(), ip)
 		if err != nil && !errors.Is(err, ipapicom.ErrReservedRange) {
-			return nil, fmt.Errorf("can't get geolocation with ip-api.com: %w", err)
+			return nil, fmt.Errorf(
+				"can't get geolocation with ip-api.com: %w",
+				err,
+			)
 		}
 
 		if g != nil {
@@ -390,7 +444,10 @@ func (f *GeoFilter) getGeoInfoByIP(ip string, logger zerolog.Logger) (*database.
 	return geo, nil
 }
 
-func (f *GeoFilter) filterGeoByRegex(geo *database.Geolocation, gr *GeoRegex) bool {
+func (f *GeoFilter) filterGeoByRegex(
+	geo *database.Geolocation,
+	gr *GeoRegex,
+) bool {
 	gf := reflect.ValueOf(gr).Elem()
 	found := true
 	// iterate field regexes and apply them on fields
@@ -419,7 +476,8 @@ func (f *GeoFilter) filterGeoByRegex(geo *database.Geolocation, gr *GeoRegex) bo
 				break
 			}
 		}
-		// if field does not match, stop checking other fields with that GeoRegex arr element
+		// if field does not match, stop checking other
+		// fields with that GeoRegex arr element
 		if !m {
 			found = false
 			break
@@ -428,7 +486,10 @@ func (f *GeoFilter) filterGeoByRegex(geo *database.Geolocation, gr *GeoRegex) bo
 	return found
 }
 
-func (f *GeoFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+func (f *GeoFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	ip := e.GetIP().String()
 	geo, err := f.getGeoInfoByIP(ip, logger)
 	if err != nil {
@@ -444,12 +505,15 @@ func (f *GeoFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error)
 }
 
 func (f *GeoFilter) String() string {
-	return fmt.Sprintf("Geo(geolocations=%s)", FormatStringerSlice(f.geo))
+	return fmt.Sprintf(
+		"Geo(geolocations=%s)",
+		FormatStringerSlice(f.geo),
+	)
 }
 
 type ReverseLookupParams struct {
-	DNS  string `json:"dns" mapstructure:"dns"`
-	Path string `json:"list" mapstructure:"list"`
+	DNS  string `mapstructure:"dns"`
+	Path string `mapstructure:"list"`
 }
 
 type ReverseLookupFilter struct {
@@ -459,7 +523,10 @@ type ReverseLookupFilter struct {
 	list []*regexp.Regexp
 }
 
-func (f *ReverseLookupFilter) getDomainByIP(ip string, logger zerolog.Logger) (*database.ReverseLookup, error) {
+func (f *ReverseLookupFilter) getDomainByIP(
+	ip string,
+	logger zerolog.Logger,
+) (*database.ReverseLookup, error) {
 	rl, err := f.db.GetReverseLookup(ip)
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, fmt.Errorf("can't get cached reverse lookup: %w", err)
@@ -487,14 +554,18 @@ func (f *ReverseLookupFilter) getDomainByIP(ip string, logger zerolog.Logger) (*
 	for _, a := range r.Answer {
 		ptr, ok := a.(*dns.PTR)
 		if !ok {
-			log.Error().Str("response", a.String()).Msg("Unknown dns response")
+			log.Error().
+				Str("response", a.String()).
+				Msg("Unknown dns response")
 			continue
 		}
 
 		rl.Domains = append(rl.Domains, ptr.Ptr[:len(ptr.Ptr)-1])
 	}
 
-	logger.Debug().Any("ptr", FormatStringSlice(rl.Domains)).Msg("New reverse lookup")
+	logger.Debug().
+		Any("ptr", FormatStringSlice(rl.Domains)).
+		Msg("New reverse lookup")
 	err = f.db.SaveReverseLookup(ip, rl)
 	if err != nil {
 		return nil, fmt.Errorf("can't save reverse lookup: %w", err)
@@ -503,7 +574,10 @@ func (f *ReverseLookupFilter) getDomainByIP(ip string, logger zerolog.Logger) (*
 	return rl, nil
 }
 
-func (f *ReverseLookupFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bool, error) {
+func (f *ReverseLookupFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	ip := e.GetIP()
 	ptr, err := f.getDomainByIP(ip.String(), logger)
 	if err != nil {
@@ -520,5 +594,9 @@ func (f *ReverseLookupFilter) Apply(e wrapper.Entity, logger zerolog.Logger) (bo
 }
 
 func (f *ReverseLookupFilter) String() string {
-	return fmt.Sprintf("ReverseLookup(list=%s, dns=%s)", f.path, f.dns.String())
+	return fmt.Sprintf(
+		"ReverseLookup(list=%s, dns=%s)",
+		f.path,
+		f.dns.String(),
+	)
 }

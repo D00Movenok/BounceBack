@@ -25,8 +25,12 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 		var p Proxy
 		switch pc.Type {
 		case http.ProxyType:
-			if p, err = http.NewProxy(pc, fs); err != nil {
-				return nil, fmt.Errorf("can't create proxy \"%s\": %w", pc.Name, err)
+			if p, err = http.NewProxy(pc, fs, db); err != nil {
+				return nil, fmt.Errorf(
+					"can't create proxy \"%s\": %w",
+					pc.Name,
+					err,
+				)
 			}
 		default:
 			return nil, fmt.Errorf("invalid proxy type: %s", pc.Type)
@@ -46,11 +50,17 @@ func (m *Manager) StartAll() error {
 	for i, p := range m.proxies {
 		p.GetFullInfoLogger().Info().Msg("Starting proxy")
 		if err := p.Start(); err != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5) //nolint:gomnd
+			ctx, cancel := context.WithTimeout(
+				context.Background(),
+				time.Second*5, //nolint:gomnd
+			)
 			defer cancel()
 			for j := 0; j < i; j++ {
 				if serr := m.proxies[j].Shutdown(ctx); serr != nil {
-					log.Error().Err(serr).Msgf("Error shutting down %s forcefully", m.proxies[j])
+					log.Error().Err(serr).Msgf(
+						"Error shutting down %s forcefully",
+						m.proxies[j],
+					)
 				}
 			}
 			return fmt.Errorf("can't start %s: %w", p, err)
