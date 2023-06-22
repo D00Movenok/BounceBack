@@ -166,7 +166,7 @@ func (p *Proxy) proxyRequest(
 	}
 	defer response.Body.Close()
 
-	for k, vals := range r.Header {
+	for k, vals := range response.Header {
 		for _, v := range vals {
 			w.Header().Add(k, v)
 		}

@@ -1,9 +1,12 @@
 package filters
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"regexp"
 	"strings"
 )
 
@@ -21,6 +24,33 @@ func FormatStringerSlice[T fmt.Stringer](s []T) string {
 
 func FormatStringSlice(s []string) string {
 	return "[" + strings.Join(s, ", ") + "]"
+}
+
+func getRegexpList(path string) ([]*regexp.Regexp, error) {
+	var (
+		re *regexp.Regexp
+		l  []*regexp.Regexp
+	)
+
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("can't open regexp file: %w", err)
+	}
+
+	s := bufio.NewScanner(file)
+	for s.Scan() {
+		line := s.Text()
+		line, _, _ = strings.Cut(line, "#") // remove comment
+		if line != "" {
+			re, err = regexp.Compile(line)
+			if err != nil {
+				return nil, fmt.Errorf("can't parse regexp: %w", err)
+			}
+			l = append(l, re)
+		}
+	}
+
+	return l, nil
 }
 
 func xorDecrypt(key []byte, data []byte) []byte {

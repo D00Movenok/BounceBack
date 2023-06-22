@@ -97,6 +97,15 @@ filters:
         # - Saturday
         # - Sunday
 
+  # "regexp" filter fires when any regexp from list matches raw request.
+  # PARAMS:
+  # * list - path to list of regexps (regexp re2).
+  #
+  - name: default_regexp_filter
+    type: regexp
+    params:
+      list: data/banned_words.txt
+
   # "malleable" filter fires only when HTTP(s) request did not
   # match MalleableC2 profile.
   # May be combined with "AND" filter to use more than one profile.
@@ -123,8 +132,8 @@ filters:
     params:
       profile: data/default.profile
       exclude:
-        - /some/example/.*
-        - /some/other/example/url
+        - ^/some/example/.*
+        - ^/some/other/example/url
 
   # "and" filter equals boolean AND.
   # Fires only when ALL passed filters fires.
@@ -181,5 +190,6 @@ proxies:
       - default_ip_banlist
       # - example_geo_filter_allowlist
       - default_lookup_filter
-      - example_not_time_filter
+      # - example_not_time_filter
+      - default_regexp_filter
       # - example_malleable_filter

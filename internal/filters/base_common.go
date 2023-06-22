@@ -27,6 +27,30 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func NewRegexFilter(
+	_ *database.DB,
+	_ FilterSet,
+	cfg common.FilterConfig,
+) (Filter, error) {
+	var params RegexParams
+
+	err := mapstructure.Decode(cfg.Params, &params)
+	if err != nil {
+		return nil, fmt.Errorf("can't decode params: %w", err)
+	}
+
+	filter := &RegexFilter{
+		path: params.Path,
+	}
+
+	filter.list, err = getRegexpList(params.Path)
+	if err != nil {
+		return nil, fmt.Errorf("can't create regexp list: %w", err)
+	}
+
+	return filter, nil
+}
+
 func NewIPFilter(
 	_ *database.DB,
 	_ FilterSet,
@@ -198,7 +222,6 @@ func NewReverseLookupFilter(
 	var (
 		params ReverseLookupParams
 		dns    netip.AddrPort
-		re     *regexp.Regexp
 	)
 
 	err := mapstructure.Decode(cfg.Params, &params)
@@ -217,26 +240,38 @@ func NewReverseLookupFilter(
 		dns:  dns,
 	}
 
-	// TODO: create uncommented reader
-	file, err := os.Open(params.Path)
+	filter.list, err = getRegexpList(params.Path)
 	if err != nil {
-		return nil, fmt.Errorf("can't open regexp file: %w", err)
-	}
-
-	s := bufio.NewScanner(file)
-	for s.Scan() {
-		line := s.Text()
-		line, _, _ = strings.Cut(line, "#") // remove comment
-		if line != "" {
-			re, err = regexp.Compile(line)
-			if err != nil {
-				return nil, fmt.Errorf("can't parse regexp: %w", err)
-			}
-			filter.list = append(filter.list, re)
-		}
+		return nil, fmt.Errorf("can't create regexp list: %w", err)
 	}
 
 	return filter, nil
+}
+
+type RegexParams struct {
+	Path string `mapstructure:"list"`
+}
+
+type RegexFilter struct {
+	path string
+	list []*regexp.Regexp
+}
+
+func (f RegexFilter) Apply(e wrapper.Entity, _ zerolog.Logger) (bool, error) {
+	raw, err := e.GetRaw()
+	if err != nil {
+		return false, fmt.Errorf("can't get raw packet: %w", err)
+	}
+	for _, r := range f.list {
+		if r.Match(raw) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f RegexFilter) String() string {
+	return fmt.Sprintf("Regexp(list=%s)", f.path)
 }
 
 type IPFilterParams struct {
@@ -564,7 +599,7 @@ func (f *ReverseLookupFilter) getDomainByIP(
 	}
 
 	logger.Debug().
-		Any("ptr", FormatStringSlice(rl.Domains)).
+		Strs("ptr", rl.Domains).
 		Msg("New reverse lookup")
 	err = f.db.SaveReverseLookup(ip, rl)
 	if err != nil {

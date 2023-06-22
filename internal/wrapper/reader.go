@@ -26,10 +26,6 @@ func NewBodyReader(r io.Reader) (*BodyReader, error) {
 	return br, nil
 }
 
-func NewBodyReaderFromRaw(data []byte) *BodyReader {
-	return &BodyReader{b: bytes.NewReader(data)}
-}
-
 type BodyReader struct {
 	b *bytes.Reader
 }
@@ -39,7 +35,7 @@ func (r *BodyReader) Read(b []byte) (int, error) {
 	if err != nil && err != io.EOF {
 		return 0, fmt.Errorf("can't read buffer: %w", err)
 	}
-	return n, nil
+	return n, err //nolint: wrapcheck // EOF or nil
 }
 
 func (r *BodyReader) Close() error {

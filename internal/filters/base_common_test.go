@@ -1,6 +1,7 @@
 package filters_test
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/netip"
@@ -83,6 +84,157 @@ func getTime(hourOffset int, minuteOffset int) string {
 	hour := mod(now.Hour()+hourOffset, 24)
 	minute := mod(now.Minute()+minuteOffset, 60)
 	return fmt.Sprintf("%02d:%02d", hour, minute)
+}
+
+func TestBase_RegexpFilter(t *testing.T) {
+	type args struct {
+		raw       []byte
+		getRawErr error
+		cfg       common.FilterConfig
+	}
+	type want struct {
+		res       bool
+		createErr bool
+		applyErr  bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			"regexp true",
+			args{
+				raw:       []byte("test of that nice filter with two word"),
+				getRawErr: nil,
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "regexp",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       true,
+				createErr: false,
+				applyErr:  false,
+			},
+		},
+		{
+			"regexp false",
+			args{
+				raw:       []byte("test of that nice filter with one word"),
+				getRawErr: nil,
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "regexp",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: false,
+				applyErr:  false,
+			},
+		},
+		{
+			"regexp err can't open file",
+			args{
+				raw:       []byte("test of that nice filter with two word"),
+				getRawErr: errors.New("some error"),
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "regexp",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_1337.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: true,
+				applyErr:  false,
+			},
+		},
+		{
+			"regexp err can't parse regexp",
+			args{
+				raw:       []byte("test of that nice filter with two word"),
+				getRawErr: errors.New("some error"),
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "regexp",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/broken_regexp.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: true,
+				applyErr:  false,
+			},
+		},
+		{
+			"regexp err GetRaw",
+			args{
+				raw:       []byte("test of that nice filter with two word"),
+				getRawErr: errors.New("some error"),
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "regexp",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_1.txt",
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: false,
+				applyErr:  true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filter, err := filters.NewRegexFilter(
+				nil,
+				filters.FilterSet{},
+				tt.args.cfg,
+			)
+			require.Equalf(
+				t,
+				tt.want.createErr,
+				err != nil,
+				"NewRegexFilter() error mismatch: %s",
+				err,
+			)
+
+			if !tt.want.createErr {
+				e := new(MockEntity)
+				e.On("GetRaw").Return(tt.args.raw, tt.args.getRawErr)
+
+				res, err := filter.Apply(e, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.applyErr,
+					err != nil,
+					"Apply() error mismatch: %s",
+					err,
+				)
+				require.Equal(
+					t,
+					tt.want.res,
+					res,
+					"Apply() result mismatch",
+				)
+				e.AssertExpectations(t)
+			}
+		})
+	}
 }
 
 func TestBase_IPFilter(t *testing.T) {
