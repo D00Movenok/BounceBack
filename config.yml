@@ -1,5 +1,5 @@
 filters:
-  # "ip" filter fires only when list contains INGRESS ip address.
+  # "ip" filter fires only when "list" contains INGRESS ip address.
   # May be combined with "not" wrapper for allowlist.
   # PARAMS:
   # * list - path to list with ip addresses or/and subnets.
@@ -14,13 +14,15 @@ filters:
     params:
       list: data/allowed_ips.txt
 
-  # "geo" filter fires only when ip geolocation lookup matches
+  # "geo" filter fires only when ANY geolocation lookup element matches
+  # with ANY regexp from "list" OR when geolocation fully matches with
   # ANY "geolocations" array element.
   # May be combined with "not" wrapper for organisations allowlist.
   # Now supported ip lookup services. How to check ip info:
   # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP/'
   # * ipapi.co: curl -s 'https://ipapi.co/TARGET-IP/json/'
   # PARAMS:
+  # * list - path to list of regexps (regexp re2).
   # * geolocations - ARRAY of geolocations to match. All fields are re2
   #   regexps arrays. Empty arrays will be ignored and marked as match.
   #   Only one regexp must match in each field.
@@ -34,33 +36,24 @@ filters:
   #     * timezone - timezone in format of Europe/Berlin.
   #     * asn - ASN in format of AS\d+.
   #
-  - name: example_geo_filter_allowlist
-    type: not::geo
+  - name: default_geo_filter
+    type: geo
     params:
-      geolocations:
-        - organisation:
-            - (?i)google
-            - (?i)youtube
-          country_code:
-            - US
-          country:
-            - (?i).*United States.*
-          region_code:
-            - VA
-            - CA
-          region:
-            - Virginia
-            - California
-          city:
-            - Ashburn
-            - Mountain View
-          timezone:
-            - America/.*
-          asn:
-            - AS15169
+      list: data/banned_words.txt
+      # geolocations:
+      #   - organisation:
+      #       - (?i)microsoft
+      #       - (?i)kaspersky
+      #     country_code:
+      #     country:
+      #     region_code:
+      #     region:
+      #     city:
+      #     timezone:
+      #     asn:
 
   # "reverse_lookup" filter fires only when DNS PTR answer matches
-  # with any regexp from list. Used for domain banlist.
+  # with any regexp from "list". Used for domain banlist.
   # May be combined with "not" wrapper/filter for domain allowlist.
   # PARAMS:
   # * dns - dns server to send PTR request if form of ip:port.
@@ -97,7 +90,7 @@ filters:
         # - Saturday
         # - Sunday
 
-  # "regexp" filter fires when any regexp from list matches raw request.
+  # "regexp" filter fires when any regexp from "list" matches raw request.
   # PARAMS:
   # * list - path to list of regexps (regexp re2).
   #
@@ -186,9 +179,9 @@ proxies:
       noreject_threshold: 5
       reject_threshold: 5
     filters:
-      # - default_ip_allowlist
       - default_ip_banlist
-      # - example_geo_filter_allowlist
+      # - default_ip_allowlist
+      - default_geo_filter
       - default_lookup_filter
       # - example_not_time_filter
       - default_regexp_filter

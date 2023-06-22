@@ -111,7 +111,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -130,7 +130,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -187,7 +187,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -200,7 +200,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filter, err := filters.NewRegexFilter(
+			filter, err := filters.NewRegexpFilter(
 				nil,
 				filters.FilterSet{},
 				tt.args.cfg,
@@ -209,7 +209,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewRegexFilter() error mismatch: %s",
+				"NewRegexpFilter() error mismatch: %s",
 				err,
 			)
 
@@ -798,13 +798,14 @@ func TestBase_GeoFilter(t *testing.T) {
 		want want
 	}{
 		{
-			"geo array true",
+			"geo geolocations array true",
 			args{
 				ip: "8.8.8.8",
 				cfg: common.FilterConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
+						"list": "",
 						"geolocations": []map[string][]string{
 							{
 								"organisation": []string{"(?i)google"},
@@ -820,13 +821,14 @@ func TestBase_GeoFilter(t *testing.T) {
 			},
 		},
 		{
-			"geo string true",
+			"geo geolocations string true",
 			args{
 				ip: "8.8.8.8",
 				cfg: common.FilterConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
+						"list": "",
 						"geolocations": []map[string][]string{
 							{
 								"country": []string{"(?i)united states"},
@@ -842,16 +844,63 @@ func TestBase_GeoFilter(t *testing.T) {
 			},
 		},
 		{
-			"geo array false",
+			"geo list array true",
 			args{
-				ip: "1.1.1.1",
+				ip: "8.8.8.8",
 				cfg: common.FilterConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_geo_true_array.txt", //nolint: lll
 						"geolocations": []map[string][]string{
 							{
-								"organisation": []string{"(?i)google"},
+								"country": []string{"some false regexp"},
+							},
+						},
+					},
+				},
+			},
+			want{
+				res:       true,
+				createErr: false,
+				applyErr:  false,
+			},
+		},
+		{
+			"geo list array true",
+			args{
+				ip: "8.8.8.8",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "geo",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_geo_true_string.txt", //nolint: lll
+						"geolocations": []map[string][]string{
+							{
+								"country": []string{"some false regexp"},
+							},
+						},
+					},
+				},
+			},
+			want{
+				res:       true,
+				createErr: false,
+				applyErr:  false,
+			},
+		},
+		{
+			"geo geolocations array false",
+			args{
+				ip: "8.8.8.8",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "geo",
+					Params: map[string]any{
+						"list": "",
+						"geolocations": []map[string][]string{
+							{
+								"organisation": []string{"some false org"},
 							},
 						},
 					},
@@ -864,16 +913,40 @@ func TestBase_GeoFilter(t *testing.T) {
 			},
 		},
 		{
-			"geo string false",
+			"geo geolocations string false",
 			args{
-				ip: "1.1.1.1",
+				ip: "8.8.8.8",
 				cfg: common.FilterConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
+						"list": "",
 						"geolocations": []map[string][]string{
 							{
-								"organisation": []string{"(?i)google"},
+								"country": []string{"some false regexp"},
+							},
+						},
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: false,
+				applyErr:  false,
+			},
+		},
+		{
+			"geo list false",
+			args{
+				ip: "8.8.8.8",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "geo",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_geo_false.txt", //nolint: lll
+						"geolocations": []map[string][]string{
+							{
+								"country": []string{"some false regexp"},
 							},
 						},
 					},
@@ -890,9 +963,17 @@ func TestBase_GeoFilter(t *testing.T) {
 			args{
 				ip: "1.1.1.1",
 				cfg: common.FilterConfig{
-					Name:   "test",
-					Type:   "geo",
-					Params: map[string]any{},
+					Name: "test",
+					Type: "geo",
+					Params: map[string]any{
+						"list": "",
+						"geolocations": []map[string][]string{
+							{
+								"organisation": []string{},
+								"country":      []string{},
+							},
+						},
+					},
 				},
 			},
 			want{
@@ -902,16 +983,63 @@ func TestBase_GeoFilter(t *testing.T) {
 			},
 		},
 		{
-			"geo err bad regexp",
+			"geo geolocations err bad regexp",
 			args{
 				ip: "1.1.1.1",
 				cfg: common.FilterConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
+						"list": "",
 						"geolocations": []map[string][]string{
 							{
 								"organisation": []string{"(?i"},
+							},
+						},
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: true,
+				applyErr:  false,
+			},
+		},
+		{
+			"geo list err can't open file",
+			args{
+				ip: "1.1.1.1",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "geo",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/banlist_1337.txt",
+						"geolocations": []map[string][]string{
+							{
+								"organisation": []string{"(?i)google"},
+							},
+						},
+					},
+				},
+			},
+			want{
+				res:       false,
+				createErr: true,
+				applyErr:  false,
+			},
+		},
+		{
+			"geo list err bad regexp",
+			args{
+				ip: "1.1.1.1",
+				cfg: common.FilterConfig{
+					Name: "test",
+					Type: "geo",
+					Params: map[string]any{
+						"list": "../../testdata/words_lists/broken_regexp.txt",
+						"geolocations": []map[string][]string{
+							{
+								"organisation": []string{"(?i)google"},
 							},
 						},
 					},
@@ -996,7 +1124,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1015,7 +1143,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1072,7 +1200,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1",
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1091,7 +1219,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:553",
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1110,7 +1238,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/banlist_1.txt",
+						"list": "../../testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},

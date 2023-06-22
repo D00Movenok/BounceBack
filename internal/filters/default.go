@@ -17,7 +17,7 @@ func GetFilterBase() map[string]FilterBaseCreator {
 		"geo":            NewGeolocationFilter,
 		"reverse_lookup": NewReverseLookupFilter,
 		// packet inspection
-		"regexp":    NewRegexFilter,
+		"regexp":    NewRegexpFilter,
 		"malleable": NewMalleableFilter,
 		// misc
 		"time": NewTimeFilter,

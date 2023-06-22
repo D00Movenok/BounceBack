@@ -27,19 +27,19 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func NewRegexFilter(
+func NewRegexpFilter(
 	_ *database.DB,
 	_ FilterSet,
 	cfg common.FilterConfig,
 ) (Filter, error) {
-	var params RegexParams
+	var params RegexpParams
 
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
 		return nil, fmt.Errorf("can't decode params: %w", err)
 	}
 
-	filter := &RegexFilter{
+	filter := &RegexpFilter{
 		path: params.Path,
 	}
 
@@ -169,16 +169,24 @@ func NewGeolocationFilter(
 
 	filter := &GeoFilter{
 		db:         db,
-		geo:        make([]*GeoRegex, 0, len(params.Geolocations)),
+		path:       params.Path,
+		geo:        make([]*GeoRegexp, 0, len(params.Geolocations)),
 		apicounter: atomic.NewInt32(0),
 		// TODO: add clients with api keys
 		ipapico:  ipapico.NewClient(),
 		ipapicom: ipapicom.NewClient(),
 	}
 
+	if params.Path != "" {
+		filter.list, err = getRegexpList(params.Path)
+		if err != nil {
+			return nil, fmt.Errorf("can't create regexp list: %w", err)
+		}
+	}
+
 	var re *regexp.Regexp
 	for _, gc := range params.Geolocations {
-		gr := &GeoRegex{
+		gr := &GeoRegexp{
 			Organisation: make([]*regexp.Regexp, 0, len(gc.Organisation)),
 			CountryCode:  make([]*regexp.Regexp, 0, len(gc.CountryCode)),
 			Country:      make([]*regexp.Regexp, 0, len(gc.Country)),
@@ -190,7 +198,7 @@ func NewGeolocationFilter(
 		}
 
 		// iterate all fields of params.Geolocations,
-		// converts them to regexes and put to gr
+		// converts them to regexps and put to gr
 		g := reflect.ValueOf(gc)
 		for i := 0; i < g.NumField(); i++ {
 			fn := g.Type().Field(i).Name
@@ -248,16 +256,16 @@ func NewReverseLookupFilter(
 	return filter, nil
 }
 
-type RegexParams struct {
+type RegexpParams struct {
 	Path string `mapstructure:"list"`
 }
 
-type RegexFilter struct {
+type RegexpFilter struct {
 	path string
 	list []*regexp.Regexp
 }
 
-func (f RegexFilter) Apply(e wrapper.Entity, _ zerolog.Logger) (bool, error) {
+func (f RegexpFilter) Apply(e wrapper.Entity, _ zerolog.Logger) (bool, error) {
 	raw, err := e.GetRaw()
 	if err != nil {
 		return false, fmt.Errorf("can't get raw packet: %w", err)
@@ -270,7 +278,7 @@ func (f RegexFilter) Apply(e wrapper.Entity, _ zerolog.Logger) (bool, error) {
 	return false, nil
 }
 
-func (f RegexFilter) String() string {
+func (f RegexpFilter) String() string {
 	return fmt.Sprintf("Regexp(list=%s)", f.path)
 }
 
@@ -362,7 +370,7 @@ func (f *TimeFilter) String() string {
 	)
 }
 
-// NOTE: GeoParam and GeoRegex must have same field names.
+// NOTE: GeoParam and GeoRegexp must have same field names.
 type GeoParam struct {
 	Organisation []string `mapstructure:"organisation"`
 	CountryCode  []string `mapstructure:"country_code"`
@@ -375,10 +383,11 @@ type GeoParam struct {
 }
 
 type GeoParams struct {
+	Path         string     `mapstructure:"list"`
 	Geolocations []GeoParam `mapstructure:"geolocations"`
 }
 
-type GeoRegex struct {
+type GeoRegexp struct {
 	Organisation []*regexp.Regexp
 	CountryCode  []*regexp.Regexp
 	Country      []*regexp.Regexp
@@ -389,7 +398,7 @@ type GeoRegex struct {
 	ASN          []*regexp.Regexp
 }
 
-func (r *GeoRegex) String() string {
+func (r *GeoRegexp) String() string {
 	return fmt.Sprintf(
 		"geo(organisation=%s, country_code=%s, country=%s, "+
 			"region_code=%s, region=%s, city=%s, timezone=%s, asn=%s)",
@@ -406,7 +415,9 @@ func (r *GeoRegex) String() string {
 
 type GeoFilter struct {
 	db         *database.DB
-	geo        []*GeoRegex
+	path       string
+	list       []*regexp.Regexp
+	geo        []*GeoRegexp
 	apicounter *atomic.Int32
 	ipapico    ipapico.Client
 	ipapicom   ipapicom.Client
@@ -479,23 +490,50 @@ func (f *GeoFilter) getGeoInfoByIP(
 	return geo, nil
 }
 
-func (f *GeoFilter) filterGeoByRegex(
+func (f *GeoFilter) filterByRegexp(geo *database.Geolocation) bool {
+	// iterate fields and match "list" regexps on them
+	gs := reflect.ValueOf(geo).Elem()
+	for i := 0; i < gs.NumField(); i++ {
+		gv := gs.Field(i)
+		if gv.Len() == 0 {
+			continue
+		}
+
+		for _, re := range f.list {
+			switch v := gv.Interface().(type) {
+			case []string:
+				for _, s := range v {
+					if re.MatchString(s) {
+						return true
+					}
+				}
+			case string:
+				if re.MatchString(v) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (f *GeoFilter) filterByGeoRegexp(
 	geo *database.Geolocation,
-	gr *GeoRegex,
+	gr *GeoRegexp,
 ) bool {
-	gf := reflect.ValueOf(gr).Elem()
-	found := true
-	// iterate field regexes and apply them on fields
-	for i := 0; i < gf.NumField(); i++ {
-		fn := gf.Type().Field(i).Name
+	var found bool
+	// iterate field regexps and apply them on fields
+	grs := reflect.ValueOf(gr).Elem()
+	for i := 0; i < grs.NumField(); i++ {
+		fn := grs.Type().Field(i).Name
 		gv := reflect.ValueOf(geo).Elem().FieldByName(fn)
-		regexes, _ := gf.FieldByName(fn).Interface().([]*regexp.Regexp)
-		if gv.Len() == 0 || len(regexes) == 0 {
+		regexps, _ := grs.FieldByName(fn).Interface().([]*regexp.Regexp)
+		if gv.Len() == 0 || len(regexps) == 0 {
 			continue
 		}
 		// find regex match of field fn.
 		var m bool
-		for _, re := range regexes {
+		for _, re := range regexps {
 			switch v := gv.Interface().(type) {
 			case []string:
 				for _, s := range v {
@@ -512,11 +550,12 @@ func (f *GeoFilter) filterGeoByRegex(
 			}
 		}
 		// if field does not match, stop checking other
-		// fields with that GeoRegex arr element
+		// fields with that GeoRegexp arr element
 		if !m {
 			found = false
 			break
 		}
+		found = true
 	}
 	return found
 }
@@ -530,8 +569,11 @@ func (f *GeoFilter) Apply(
 	if err != nil {
 		return false, fmt.Errorf("can't get geolocation info: %w", err)
 	}
+	if len(f.list) != 0 && f.filterByRegexp(geo) {
+		return true, nil
+	}
 	for _, gr := range f.geo {
-		m := f.filterGeoByRegex(geo, gr)
+		m := f.filterByGeoRegexp(geo, gr)
 		if m {
 			return true, nil
 		}
@@ -541,7 +583,8 @@ func (f *GeoFilter) Apply(
 
 func (f *GeoFilter) String() string {
 	return fmt.Sprintf(
-		"Geo(geolocations=%s)",
+		"Geo(path=%s, geolocations=%s)",
+		f.path,
 		FormatStringerSlice(f.geo),
 	)
 }
