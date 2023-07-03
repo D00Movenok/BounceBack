@@ -79,11 +79,11 @@ func getWeekdayName(offset int) string {
 	return names[o]
 }
 
-func getTime(hourOffset int, minuteOffset int) string {
-	now := time.Now().In(time.UTC)
-	hour := mod(now.Hour()+hourOffset, 24)
-	minute := mod(now.Minute()+minuteOffset, 60)
-	return fmt.Sprintf("%02d:%02d", hour, minute)
+func getTime(hourOffset time.Duration, minuteOffset time.Duration) string {
+	now := time.Now().In(time.UTC).
+		Add(hourOffset * time.Hour).
+		Add(minuteOffset * time.Minute)
+	return fmt.Sprintf("%02d:%02d", now.Hour(), now.Minute())
 }
 
 func TestBase_RegexpFilter(t *testing.T) {

@@ -99,6 +99,9 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 	default:
 	}
 
+	// TODO: run all requests (e.g. DNS PTR, GEO) concurrently
+	// before filtering for optimization.
+	// TODO: cache filters for equal entities for optimization.
 	var filtered bool
 	for _, f := range p.config.Filters {
 		filterLogger := logger.With().Str("filter", f).Logger()

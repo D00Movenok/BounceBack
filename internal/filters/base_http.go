@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -76,10 +75,28 @@ func (f *MallebaleFilter) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
-	var url *url.URL
+	var found bool
+
+	// verify useragent lists
+	allow, err := f.verifyUserAgentLists(e, logger)
+	if err != nil {
+		return false, fmt.Errorf("can't verify user-agent lists: %w", err)
+	}
+	if !allow {
+		return true, nil
+	}
+
+	// exlude pathes
+	found, err = f.isExcluded(e, logger)
+	if err != nil {
+		return false, fmt.Errorf("can't verify excluded paths: %w", err)
+	}
+	if found {
+		return false, nil
+	}
 
 	// verify useragent
-	allow, err := f.verifyUserAgent(e)
+	allow, err = f.verifyUserAgent(e, logger)
 	if err != nil {
 		return false, fmt.Errorf("can't verify user-agent: %w", err)
 	}
@@ -87,20 +104,96 @@ func (f *MallebaleFilter) Apply(
 		return true, nil
 	}
 
-	// exlude pathes
-	url, err = e.GetURL()
+	// verify profiles
+	found, err = f.findProfile(e, logger)
+	if err != nil {
+		return false, fmt.Errorf("can't find profile: %w", err)
+	}
+	if found {
+		return false, nil
+	}
+
+	logger.Debug().Msg("http-get/post/stager did not match")
+	return true, nil
+}
+
+func (f *MallebaleFilter) verifyUserAgentLists(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
+	headers, err := e.GetHeaders()
+	if err != nil {
+		return false, fmt.Errorf("can't get headers: %w", err)
+	}
+	ua := headers["User-Agent"]
+
+	// disallow blocked user-agents
+	for _, b := range f.profile.HTTPConfig.BlockUserAgents {
+		for _, u := range ua {
+			if matchByMask(u, b) {
+				logger.Debug().Str("match", u).Msg("block_useragents match")
+				return false, nil
+			}
+		}
+	}
+
+	// pass only allowed user-agents
+	for _, a := range f.profile.HTTPConfig.AllowUserAgents {
+		for _, u := range ua {
+			if matchByMask(u, a) {
+				return true, nil
+			}
+		}
+	}
+	if len(f.profile.HTTPConfig.AllowUserAgents) > 0 {
+		logger.Debug().Any("match", ua).Msg("allow_useragents did not match")
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (f *MallebaleFilter) isExcluded(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
+	url, err := e.GetURL()
 	if err != nil {
 		return false, fmt.Errorf("can't get url: %w", err)
 	}
 	for _, e := range f.exclude {
 		if e.MatchString(url.Path) {
-			return false, nil
+			logger.Debug().Stringer("match", e).Msg("Exclude URL match")
+			return true, nil
 		}
 	}
+	return false, nil
+}
 
-	// verify profiles
+func (f *MallebaleFilter) verifyUserAgent(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
+	headers, err := e.GetHeaders()
+	if err != nil {
+		return false, fmt.Errorf("can't get headers: %w", err)
+	}
+	ua := headers["User-Agent"]
+
+	if f.profile.UserAgent != "" && !slices.Contains(ua, f.profile.UserAgent) {
+		logger.Debug().Any("match", ua).Msg("user_agent did not match")
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (f *MallebaleFilter) findProfile(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	for _, p := range f.profile.HTTPGet {
-		allow, err = f.verifyHTTPProfile(
+		allow, err := f.verifyHTTPProfile(
 			e,
 			logger,
 			p.Verb,
@@ -114,11 +207,13 @@ func (f *MallebaleFilter) Apply(
 			return false, fmt.Errorf("can't verify get profile: %w", err)
 		}
 		if allow {
-			return false, nil
+			logger.Debug().Str("match", p.Name).Msg("http-get match")
+			return true, nil
 		}
 	}
+
 	for _, p := range f.profile.HTTPPost {
-		allow, err = f.verifyHTTPProfile(
+		allow, err := f.verifyHTTPProfile(
 			e,
 			logger,
 			p.Verb,
@@ -132,14 +227,14 @@ func (f *MallebaleFilter) Apply(
 			return false, fmt.Errorf("can't verify post profile: %w", err)
 		}
 		if allow {
-			return false, nil
+			logger.Debug().Str("match", p.Name).Msg("http-post match")
+			return true, nil
 		}
 	}
 
-	// verify stager if exist
 	if f.profile.HostStage {
 		for _, p := range f.profile.HTTPStager {
-			allow, err = f.verifyHTTPProfile(
+			allow, err := f.verifyHTTPProfile(
 				e,
 				logger,
 				http.MethodGet,
@@ -156,58 +251,22 @@ func (f *MallebaleFilter) Apply(
 				)
 			}
 			if allow {
-				return false, nil
+				logger.Debug().Str("match", p.Name).Msg("http-stager match")
+				return true, nil
 			}
 		}
 
-		allow, err = f.verifyStagerURL(e)
+		allow, err := f.verifyStagerURL(e)
 		if err != nil {
 			return false, fmt.Errorf("can't verify stager path: %w", err)
 		}
 		if allow {
-			return false, nil
+			logger.Debug().Msg("Stager URL match")
+			return true, nil
 		}
 	}
 
-	return true, nil
-}
-
-func (f *MallebaleFilter) verifyUserAgent(e wrapper.Entity) (bool, error) {
-	headers, err := e.GetHeaders()
-	if err != nil {
-		return false, fmt.Errorf("can't get headers: %w", err)
-	}
-	ua := headers["User-Agent"]
-
-	// disallow blocked user-agents
-	for _, b := range f.profile.HTTPConfig.BlockUserAgents {
-		for _, u := range ua {
-			if matchByMask(u, b) {
-				return false, nil
-			}
-		}
-	}
-
-	// pass only allowed user-agents
-	for _, a := range f.profile.HTTPConfig.AllowUserAgents {
-		for _, u := range ua {
-			if matchByMask(u, a) {
-				return true, nil
-			}
-		}
-	}
-	if len(f.profile.HTTPConfig.AllowUserAgents) > 0 {
-		return false, nil
-	}
-
-	// disabled, may cause download problems
-	// if f.profile.UserAgent != "" {
-	// 	if !slices.Contains(ua, f.profile.UserAgent) {
-	// 		return false, nil
-	// 	}
-	// }
-
-	return true, nil
+	return false, nil
 }
 
 func (f *MallebaleFilter) verifyHTTPProfile(

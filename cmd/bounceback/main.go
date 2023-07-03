@@ -67,6 +67,8 @@ func main() {
 	defer db.DB.Close()
 
 	cfg := parseProxyConfig()
+	log.Debug().Any("config", cfg).Msg("Parsed config")
+
 	m := runProxyManager(db, cfg)
 
 	c := make(chan os.Signal, 1)

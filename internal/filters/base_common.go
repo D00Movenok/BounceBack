@@ -265,13 +265,17 @@ type RegexpFilter struct {
 	list []*regexp.Regexp
 }
 
-func (f RegexpFilter) Apply(e wrapper.Entity, _ zerolog.Logger) (bool, error) {
+func (f RegexpFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	raw, err := e.GetRaw()
 	if err != nil {
 		return false, fmt.Errorf("can't get raw packet: %w", err)
 	}
 	for _, r := range f.list {
 		if r.Match(raw) {
+			logger.Debug().Stringer("match", r).Msg("Regexp match")
 			return true, nil
 		}
 	}
@@ -292,29 +296,23 @@ type IPFilter struct {
 	ipBanlist     []netip.Addr
 }
 
-func (f *IPFilter) Apply(e wrapper.Entity, _ zerolog.Logger) (bool, error) {
+func (f *IPFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	ip := e.GetIP()
-
-	ok := slices.ContainsFunc(
-		f.subnetBanlist,
-		func(i netip.Prefix) bool {
-			return i.Contains(ip)
-		},
-	)
-	if ok {
-		return true, nil
+	for _, i := range f.subnetBanlist {
+		if i.Contains(ip) {
+			logger.Debug().Stringer("match", i).Msg("Subnet match")
+			return true, nil
+		}
 	}
-
-	ok = slices.ContainsFunc(
-		f.ipBanlist,
-		func(i netip.Addr) bool {
-			return i.Compare(ip) == 0
-		},
-	)
-	if ok {
-		return true, nil
+	for _, i := range f.ipBanlist {
+		if i.Compare(ip) == 0 {
+			logger.Debug().Stringer("match", i).Msg("IP match")
+			return true, nil
+		}
 	}
-
 	return false, nil
 }
 
@@ -336,7 +334,10 @@ type TimeFilter struct {
 	weekdays []time.Weekday
 }
 
-func (f *TimeFilter) Apply(_ wrapper.Entity, _ zerolog.Logger) (bool, error) {
+func (f *TimeFilter) Apply(
+	_ wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
 	n := time.Now().In(f.loc)
 
 	d := n.Weekday()
@@ -355,6 +356,7 @@ func (f *TimeFilter) Apply(_ wrapper.Entity, _ zerolog.Logger) (bool, error) {
 		return false, nil
 	}
 
+	logger.Debug().Stringer("match", n).Msg("Time match")
 	return true, nil
 }
 
@@ -435,12 +437,17 @@ func (f *GeoFilter) getGeoInfoByIP(
 		return geo, nil
 	}
 
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Second*3, //nolint:gomnd
+	)
+	defer cancel()
+
 	geo = &database.Geolocation{}
 	switch f.apicounter.Inc() % 2 {
 	case 0:
 		var g *ipapico.Location
-		// TODO: maybe add context with timeout
-		g, err = f.ipapico.GetLocationForIP(context.Background(), ip)
+		g, err = f.ipapico.GetLocationForIP(ctx, ip)
 		if err != nil && !errors.Is(err, ipapico.ErrReservedRange) {
 			return nil, fmt.Errorf(
 				"can't get geolocation with ipapi.co: %w",
@@ -460,8 +467,7 @@ func (f *GeoFilter) getGeoInfoByIP(
 		}
 	case 1:
 		var g *ipapicom.Location
-		// TODO: maybe add context with timeout
-		g, err = f.ipapicom.GetLocationForIP(context.Background(), ip)
+		g, err = f.ipapicom.GetLocationForIP(ctx, ip)
 		if err != nil && !errors.Is(err, ipapicom.ErrReservedRange) {
 			return nil, fmt.Errorf(
 				"can't get geolocation with ip-api.com: %w",
@@ -490,7 +496,10 @@ func (f *GeoFilter) getGeoInfoByIP(
 	return geo, nil
 }
 
-func (f *GeoFilter) filterByRegexp(geo *database.Geolocation) bool {
+func (f *GeoFilter) filterByRegexp(
+	geo *database.Geolocation,
+	logger zerolog.Logger,
+) bool {
 	// iterate fields and match "list" regexps on them
 	gs := reflect.ValueOf(geo).Elem()
 	for i := 0; i < gs.NumField(); i++ {
@@ -504,11 +513,15 @@ func (f *GeoFilter) filterByRegexp(geo *database.Geolocation) bool {
 			case []string:
 				for _, s := range v {
 					if re.MatchString(s) {
+						logger.Debug().
+							Stringer("match", re).
+							Msg("Geo regexp match")
 						return true
 					}
 				}
 			case string:
 				if re.MatchString(v) {
+					logger.Debug().Stringer("match", re).Msg("Geo regexp match")
 					return true
 				}
 			}
@@ -569,12 +582,13 @@ func (f *GeoFilter) Apply(
 	if err != nil {
 		return false, fmt.Errorf("can't get geolocation info: %w", err)
 	}
-	if len(f.list) != 0 && f.filterByRegexp(geo) {
+	if len(f.list) != 0 && f.filterByRegexp(geo, logger) {
 		return true, nil
 	}
 	for _, gr := range f.geo {
 		m := f.filterByGeoRegexp(geo, gr)
 		if m {
+			logger.Debug().Stringer("match", gr).Msg("Geo match")
 			return true, nil
 		}
 	}
@@ -664,6 +678,9 @@ func (f *ReverseLookupFilter) Apply(
 	for _, d := range ptr.Domains {
 		for _, re := range f.list {
 			if re.MatchString(d) {
+				logger.Debug().
+					Stringer("match", re).
+					Msg("Reverse lookup regexp match")
 				return true, nil
 			}
 		}

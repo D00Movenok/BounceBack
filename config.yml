@@ -1,8 +1,8 @@
 filters:
-  # "ip" filter fires only when "list" contains INGRESS ip address.
+  # "ip" filter fires only when "list" contains INGRESS IP address.
   # May be combined with "not" wrapper for allowlist.
   # PARAMS:
-  # * list - path to list with ip addresses or/and subnets.
+  # * list - path to file with IP addresses or/and subnets.
   #
   - name: default_ip_banlist
     type: ip
@@ -14,17 +14,17 @@ filters:
     params:
       list: data/allowed_ips.txt
 
-  # "geo" filter fires only when ANY geolocation lookup element matches
+  # "geo" filter fires only either when ANY geolocation lookup element matches
   # with ANY regexp from "list" OR when geolocation fully matches with
   # ANY "geolocations" array element.
   # May be combined with "not" wrapper for organisations allowlist.
-  # Now supported ip lookup services. How to check ip info:
+  # Now supported IP lookup services. How to check IP info:
   # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP/'
   # * ipapi.co: curl -s 'https://ipapi.co/TARGET-IP/json/'
   # PARAMS:
-  # * list - path to list of regexps (regexp re2).
+  # * list - path to file with regexps (regexp re2), may be empty.
   # * geolocations - ARRAY of geolocations to match. All fields are re2
-  #   regexps arrays. Empty arrays will be ignored and marked as match.
+  #   regexps arrays. Empty arrays will be ignored.
   #   Only one regexp must match in each field.
   #   Geolocations array elements contain next ARRAY-fields:
   #     * organisation - organisation name (ORG, ISP and AS (if contains company name)).
@@ -34,7 +34,7 @@ filters:
   #     * region - region name.
   #     * city - city name.
   #     * timezone - timezone in format of Europe/Berlin.
-  #     * asn - ASN in format of AS\d+.
+  #     * asn - ASN in format of "AS\d+".
   #
   - name: default_geo_filter
     type: geo
@@ -53,11 +53,11 @@ filters:
       #     asn:
 
   # "reverse_lookup" filter fires only when DNS PTR answer matches
-  # with any regexp from "list". Used for domain banlist.
+  # with any regexp from "list". Can be used for domain banlist.
   # May be combined with "not" wrapper/filter for domain allowlist.
   # PARAMS:
   # * dns - dns server to send PTR request if form of ip:port.
-  # * list - path to list of regexps (regexp re2).
+  # * list - path to file with regexps (regexp re2).
   #
   - name: default_lookup_filter
     type: reverse_lookup
@@ -65,14 +65,14 @@ filters:
       dns: 1.1.1.1:53
       list: data/banned_words.txt
 
-  # "time" filter fires only when time of request is in time period.
+  # "time" filter fires only when time of request is in certain time period.
   # May be combined with "and" filter for more than one time periods.
   # May be combined with "not" wrapper/filter for time allowlist.
   # PARAMS:
   # * from - start of time period in form of HH:mm.
   # * to - end of time period in form of HH:mm.
   # * timezone - timezone of "from" and "to" fields.
-  # * weekdays - list of time period weekdays, empty == all
+  # * weekdays - list of time period weekdays, empty == all,
   #   may be: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
   #
   - name: example_not_time_filter
@@ -92,7 +92,7 @@ filters:
 
   # "regexp" filter fires when any regexp from "list" matches raw request.
   # PARAMS:
-  # * list - path to list of regexps (regexp re2).
+  # * list - path to file with regexps (regexp re2).
   #
   - name: default_regexp_filter
     type: regexp
@@ -101,13 +101,14 @@ filters:
 
   # "malleable" filter fires only when HTTP(s) request did not
   # match MalleableC2 profile.
-  # May be combined with "AND" filter to use more than one profile.
+  # May be combined with "and" filter to use more than one profile.
   # Filter algorithm:
-  # 1. Verify useragent:
+  # 1. Verify useragent lists:
   #   a. UA did not match "block_useragents" (if not empty).
   #   b. UA matched "allow_useragents" (if not empty).
   # 2. Allow excluded paths.
-  # 3. Any verified:
+  # 3. Verify useragent match (if not empty).
+  # 4. Any verified:
   #   a. Verify any "http-get" or "http-post" profile:
   #     i.   HTTP method match.
   #     ii.  Any URI match.
@@ -129,9 +130,9 @@ filters:
         - ^/some/other/example/url
 
   # "and" filter equals boolean AND.
-  # Fires only when ALL passed filters fires.
+  # It fires only when ALL passed filters fire.
   # PARAMS:
-  # * filters - list of filter names above.
+  # * filters - names of filters defined above that filter.
   #
   - name: and_usage_example
     type: and
@@ -141,9 +142,9 @@ filters:
         - default_ip_allowlist
 
   # "or" filter equals boolean OR.
-  # Fires only when ANY passed filter fires.
+  # It fires when ANY passed filter fires.
   # PARAMS:
-  # * filters - list of filter names above.
+  # * filters - names of filters defined above that filter.
   #
   - name: or_usage_example
     type: or
@@ -153,11 +154,11 @@ filters:
         - default_ip_allowlist
 
   # "not" filter equals boolean NOT.
-  # Fires only when passed filter NOT fires.
+  # It fires only when passed filter does NOT fire.
   # May be used as BASE (type: not) filter
   # or WRAPPER filter (type: not::somefiltertype).
   # PARAMS for BASE filter:
-  # * filter - filter name from above.
+  # * filter - name of the filter defined above that filter.
   #
   - name: not_usage_example
     type: not
