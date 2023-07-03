@@ -7,6 +7,8 @@ upx:
   - enabled: true
     compress: best
     lzma: true
+    # TODO: delete this string when upx fix segfault
+    goos: [linux, windows]
 
 builds:
   - id: "bounceback"
