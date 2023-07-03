@@ -1,0 +1,9 @@
+# test allowlist
+# allowed ip 1.1.1.1, 3.3.3.3, aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa and usbnets 2.2.0.0/16, fe80::/10
+1.1.1.1
+
+2.2.0.0/16
+3.3.3.3 # example comment
+
+aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa #some comment
+fe80::/10

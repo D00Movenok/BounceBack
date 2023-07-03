@@ -1,0 +1,50 @@
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+upx:
+  - enabled: true
+    compress: best
+    lzma: true
+
+builds:
+  - id: "bounceback"
+    main: ./cmd/bounceback
+    binary: bounceback
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: "bounceback"
+    format: zip
+    rlcp: true
+    builds:
+      - "bounceback"
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    wrap_in_directory: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - data/
+      - LICENSE
+      - README.md
+      - config.yml
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
