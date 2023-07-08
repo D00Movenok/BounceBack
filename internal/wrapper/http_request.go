@@ -23,11 +23,18 @@ func (r HTTPRequest) GetIP() netip.Addr {
 }
 
 func (r HTTPRequest) GetRaw() ([]byte, error) {
-	defer r.resetBody()
+	body, err := WrapHTTPBody(r.Request.Body)
+	if err != nil {
+		return nil, fmt.Errorf("can't create new body reader: %w", err)
+	}
+
+	// NOTE: httputil.DumpRequest recreates body ReaderCloser
 	data, err := httputil.DumpRequest(r.Request, true)
+	r.Request.Body = body
 	if err != nil {
 		return nil, fmt.Errorf("can't dump request: %w", err)
 	}
+
 	return data, nil
 }
 
@@ -58,6 +65,6 @@ func (r HTTPRequest) GetMethod() (string, error) {
 
 func (r HTTPRequest) resetBody() {
 	if err := r.Request.Body.Close(); err != nil {
-		log.Error().Err(err).Msg("Error resetting request body")
+		log.Error().Err(err).Msg("Can't reset request body")
 	}
 }

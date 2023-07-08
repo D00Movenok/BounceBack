@@ -8,6 +8,7 @@ upx:
     compress: best
     lzma: true
     # TODO: delete this string when upx fix segfault
+    # https://github.com/upx/upx/issues/612
     goos: [linux, windows]
 
 builds:
@@ -42,7 +43,7 @@ checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: "{{ .Version }}-next"
 
 changelog:
   sort: asc

@@ -1245,7 +1245,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 			want{
 				res:       false,
 				createErr: false,
-				applyErr:  true,
+				applyErr:  false,
 			},
 		},
 	}

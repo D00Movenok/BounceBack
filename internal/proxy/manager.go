@@ -48,7 +48,7 @@ type Manager struct {
 
 func (m *Manager) StartAll() error {
 	for i, p := range m.proxies {
-		p.GetFullInfoLogger().Info().Msg("Starting proxy")
+		p.GetLogger().Info().Msg("Starting proxy")
 		if err := p.Start(); err != nil {
 			ctx, cancel := context.WithTimeout(
 				context.Background(),
@@ -74,7 +74,7 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 	wg.Add(len(m.proxies))
 	errCh := make(chan error)
 	for _, p := range m.proxies {
-		p.GetFullInfoLogger().Info().Msg("Shutting down proxy")
+		p.GetLogger().Info().Msg("Shutting down proxy")
 		go func(p Proxy) {
 			defer wg.Done()
 			if err := p.Shutdown(ctx); err != nil {

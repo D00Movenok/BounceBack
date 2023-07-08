@@ -272,11 +272,11 @@ func (f *MallebaleFilter) findProfile(
 func (f *MallebaleFilter) verifyHTTPProfile(
 	e wrapper.Entity,
 	logger zerolog.Logger,
-	v string,
-	dv string,
-	u malleable.URIs,
-	p []malleable.Parameter,
-	h []malleable.Header,
+	method string,
+	defaultMethod string,
+	uri malleable.URIs,
+	parameters []malleable.Parameter,
+	headers []malleable.Header,
 	transforms [][]malleable.Function,
 ) (bool, error) {
 	var (
@@ -303,7 +303,7 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 	}
 
 	// verify method
-	ok, err := f.verifyMethod(e, v, dv)
+	ok, err := f.verifyMethod(e, method, defaultMethod)
 	if err != nil {
 		return false, fmt.Errorf("can't verify method: %w", err)
 	}
@@ -312,7 +312,7 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 	}
 
 	// verify uri
-	ok, err = f.verifyURI(e, logger, u, uriTransforms)
+	ok, err = f.verifyURI(e, logger, uri, uriTransforms)
 	if err != nil {
 		return false, fmt.Errorf("can't verify uri: %w", err)
 	}
@@ -321,7 +321,7 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 	}
 
 	// verify parameters
-	ok, err = f.verifyParameters(e, logger, p, parametersTransforms)
+	ok, err = f.verifyParameters(e, logger, parameters, parametersTransforms)
 	if err != nil {
 		return false, fmt.Errorf("can't verify parameters: %w", err)
 	}
@@ -330,7 +330,7 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 	}
 
 	// verify headers
-	ok, err = f.verifyHeaders(e, logger, h, headersTransforms)
+	ok, err = f.verifyHeaders(e, logger, headers, headersTransforms)
 	if err != nil {
 		return false, fmt.Errorf("can't verify headers: %w", err)
 	}

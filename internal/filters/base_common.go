@@ -639,9 +639,6 @@ func (f *ReverseLookupFilter) getDomainByIP(
 	if err != nil {
 		return nil, fmt.Errorf("can't create PTR dns request: %w", err)
 	}
-	if r.Rcode != dns.RcodeSuccess {
-		return nil, errors.New("can't get PTR for " + ip)
-	}
 
 	for _, a := range r.Answer {
 		ptr, ok := a.(*dns.PTR)

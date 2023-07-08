@@ -10,7 +10,7 @@ import (
 type Proxy interface {
 	Start() error
 	Shutdown(context.Context) error
-	GetFullInfoLogger() *zerolog.Logger
+	GetLogger() *zerolog.Logger
 
 	fmt.Stringer
 }

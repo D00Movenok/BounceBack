@@ -24,7 +24,7 @@ const banner = `
  ╰─╯   │   ╲ ____ ╭──╮ ┬  ┬ ┬  ┬ ╭──╮ ╭──╮
      ╲ │___╱╱   │ │  │ │  │ │╲╲│ │    ├──╯
        │   ╲╲___│ ╰──╯ ╰──╯ ┴  ┴ ╰──╯ ╰──╯
-     ╱ │___╱╱   │ ╭──╮ ╭──╮ ┬ ┌    %s
+     ╱ │___╱╱   │ ╭──╮ ╭──╮ ┬ ┌    v%s
             ╲___│ ├──┤ │    ├─┴╮   @d00movenok
    ╱              ┴  ┴ ╰──╯ ┴  ┴
 
@@ -33,7 +33,7 @@ const banner = `
 `
 
 var (
-	version = "v0.0.0-next"
+	version = "0.0.0-next"
 
 	configFile = pflag.StringP(
 		"config",
@@ -126,7 +126,7 @@ func parseConfig() {
 	viper.SetConfigFile(*configFile)
 	viper.SetConfigType("yaml")
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal().Err(err).Msg("Error reading config from yaml")
+		log.Fatal().Err(err).Msg("Can't read config from yaml")
 	}
 }
 
@@ -142,7 +142,7 @@ func createKeyValueStorage() *database.DB {
 func parseProxyConfig() *common.Config {
 	cfg := new(common.Config)
 	if err := viper.Unmarshal(&cfg); err != nil {
-		log.Fatal().Err(err).Msg("Error parsing proxy config from file")
+		log.Fatal().Err(err).Msg("Can't parse proxy config from file")
 	}
 	return cfg
 }
@@ -151,10 +151,10 @@ func runProxyManager(db *database.DB, cfg *common.Config) *proxy.Manager {
 	log.Info().Msg("Starting proxies")
 	m, err := proxy.NewManager(db, cfg)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating proxy manager")
+		log.Fatal().Err(err).Msg("Can't create proxy manager")
 	}
 	if err = m.StartAll(); err != nil {
-		log.Fatal().Err(err).Msg("Error starting proxies")
+		log.Fatal().Err(err).Msg("Can't start proxies")
 	}
 	return m
 }
@@ -162,6 +162,6 @@ func runProxyManager(db *database.DB, cfg *common.Config) *proxy.Manager {
 func shutdownProxyManager(ctx context.Context, m *proxy.Manager) {
 	log.Info().Msg("Shutting down proxies")
 	if err := m.Shutdown(ctx); err != nil {
-		log.Fatal().Err(err).Msg("Error shutting down proxies")
+		log.Fatal().Err(err).Msg("Can't shutdown proxies")
 	}
 }

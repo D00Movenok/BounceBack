@@ -1,6 +1,7 @@
 package base
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"sync"
@@ -38,44 +39,48 @@ func NewBaseProxy(
 		}
 	}
 
-	return &Proxy{
-		ListenAddr: cfg.Listen,
-		TargetAddr: cfg.Target,
-		Name:       cfg.Name,
-		Type:       cfg.Type,
+	base := &Proxy{
+		Config: cfg,
 
-		Logger: logger,
+		Closing: false,
+		Logger:  logger,
 
 		db:      db,
-		config:  cfg,
 		filters: fs,
-	}, nil
+	}
+
+	if cfg.TLS != nil {
+		cert, err := tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
+		if err != nil {
+			return nil, fmt.Errorf("can't load tls config: %w", err)
+		}
+		// #nosec G402
+		base.TLSConfig = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}
+	}
+
+	return base, nil
 }
 
 type Proxy struct {
-	ListenAddr string
-	TargetAddr string
-	Name       string
-	Type       string
+	Config    common.ProxyConfig
+	TLSConfig *tls.Config
 
 	Closing bool
 	WG      sync.WaitGroup
 	Logger  zerolog.Logger
 
 	db      *database.DB
-	config  common.ProxyConfig
 	filters *filters.FilterSet
 }
 
-func (p *Proxy) GetConfig() *common.ProxyConfig {
-	return &p.config
-}
-
-func (p *Proxy) GetFullInfoLogger() *zerolog.Logger {
+func (p *Proxy) GetLogger() *zerolog.Logger {
 	logger := p.Logger.With().
-		Str("listen", p.ListenAddr).
-		Str("target", p.TargetAddr).
-		Str("type", p.Type).
+		Str("listen", p.Config.Listen).
+		Str("target", p.Config.Target).
+		Str("type", p.Config.Type).
 		Logger()
 	return &logger
 }
@@ -90,10 +95,10 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 		logger.Error().Err(err).Msg("Can't get cached verdict")
 	}
 	switch {
-	case p.config.FilterSettings.NoRejectThreshold > 0 &&
-		v.Accepts >= p.config.FilterSettings.NoRejectThreshold:
-	case p.config.FilterSettings.RejectThreshold > 0 &&
-		v.Rejects >= p.config.FilterSettings.RejectThreshold:
+	case p.Config.FilterSettings.NoRejectThreshold > 0 &&
+		v.Accepts >= p.Config.FilterSettings.NoRejectThreshold:
+	case p.Config.FilterSettings.RejectThreshold > 0 &&
+		v.Rejects >= p.Config.FilterSettings.RejectThreshold:
 		logger.Warn().Msg("Rejected permanently")
 		return false
 	default:
@@ -103,12 +108,12 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 	// before filtering for optimization.
 	// TODO: cache filters for equal entities for optimization.
 	var filtered bool
-	for _, f := range p.config.Filters {
+	for _, f := range p.Config.Filters {
 		filterLogger := logger.With().Str("filter", f).Logger()
 		filter, _ := p.filters.Get(f)
 		filtered, err = filter.Apply(e, filterLogger)
 		if err != nil {
-			filterLogger.Error().Err(err).Msg("Filter error")
+			filterLogger.Error().Err(err).Msg("Filter error, skipping...")
 			continue
 		}
 		if filtered {
@@ -131,5 +136,5 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 
 func (p *Proxy) String() string {
 	return fmt.Sprintf("%s proxy \"%s\" (%s->%s)",
-		p.Type, p.Name, p.ListenAddr, p.TargetAddr)
+		p.Config.Type, p.Config.Name, p.Config.Listen, p.Config.Target)
 }

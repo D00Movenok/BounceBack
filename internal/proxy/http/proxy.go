@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -78,24 +77,14 @@ func NewProxy(
 	}
 
 	p.server = &http.Server{
-		Addr:         p.ListenAddr,
+		Addr:         p.Config.Listen,
 		ReadTimeout:  cfg.Timeout,
 		WriteTimeout: cfg.Timeout,
 		IdleTimeout:  cfg.Timeout,
 		Handler:      p.getHandler(),
 	}
 
-	if cfg.TLS != nil {
-		var cert tls.Certificate
-		cert, err = tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
-		if err != nil {
-			return nil, fmt.Errorf("can't load tls config: %w", err)
-		}
-		// #nosec G402
-		p.TLSConfig = &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: true,
-		}
+	if p.TLSConfig != nil {
 		p.client.Transport = &http.Transport{
 			TLSClientConfig:   p.TLSConfig,
 			ForceAttemptHTTP2: true,
@@ -111,7 +100,6 @@ type Proxy struct {
 
 	TargetURL *url.URL
 	ActionURL *url.URL
-	TLSConfig *tls.Config
 
 	server *http.Server
 	client *http.Client
@@ -160,7 +148,7 @@ func (p *Proxy) proxyRequest(
 
 	response, err := p.client.Do(r)
 	if err != nil {
-		logger.Error().Err(err).Msg("Error making proxy request")
+		logger.Error().Err(err).Msg("Can't make proxy request")
 		handleError(w)
 		return
 	}
@@ -174,7 +162,7 @@ func (p *Proxy) proxyRequest(
 	w.WriteHeader(response.StatusCode)
 
 	if _, err = io.Copy(w, response.Body); err != nil {
-		logger.Error().Err(err).Msg("Error copying body")
+		logger.Error().Err(err).Msg("Can't copy body")
 		handleError(w)
 		return
 	}
@@ -185,8 +173,7 @@ func (p *Proxy) processVerdict(
 	r *http.Request,
 	logger zerolog.Logger,
 ) {
-	cfg := p.GetConfig()
-	switch cfg.FilterSettings.Action {
+	switch p.Config.FilterSettings.Action {
 	case common.ActionProxy:
 		p.proxyRequest(p.ActionURL, w, r, logger)
 	case common.ActionRedirect:
@@ -208,26 +195,32 @@ func (p *Proxy) processVerdict(
 	}
 }
 
-func (p *Proxy) processRequest(r *http.Request, logger zerolog.Logger) bool {
+func (p *Proxy) createEntity(r *http.Request) (wrapper.Entity, error) {
 	var err error
 	if r.Body, err = wrapper.WrapHTTPBody(r.Body); err != nil {
-		logger.Error().Err(err).Msg("Error wrapping body")
-		return false
+		return nil, fmt.Errorf("can't wrap body: %w", err)
 	}
 	r.Header.Set("Host", r.Host)
 
-	reqEntity := &wrapper.HTTPRequest{Request: r}
-	return p.RunFilters(reqEntity, logger)
+	e := &wrapper.HTTPRequest{Request: r}
+	return e, nil
 }
 
 func (p *Proxy) getHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		e, err := p.createEntity(r)
+		if err != nil {
+			p.Logger.Error().Err(err).Msg("Can't create entity")
+			handleError(w)
+			return
+		}
+
 		logger := p.Logger.With().
-			Str("from", r.RemoteAddr).
+			Stringer("from", e.GetIP()).
 			Logger()
 
 		logRequest(r, logger)
-		if ok := p.processRequest(r, logger); !ok {
+		if !p.RunFilters(e, logger) {
 			p.processVerdict(w, r, logger)
 			return
 		}
@@ -241,12 +234,12 @@ func (p *Proxy) serve() {
 	if p.TLSConfig != nil {
 		err := p.server.ListenAndServeTLS("", "")
 		if err != nil && err != http.ErrServerClosed {
-			p.Logger.Fatal().Err(err).Msg("Error in server")
+			p.Logger.Fatal().Err(err).Msg("Unexpected server error")
 		}
 	} else {
 		err := p.server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			p.Logger.Fatal().Err(err).Msg("Error in server")
+			p.Logger.Fatal().Err(err).Msg("Unexpected server error")
 		}
 	}
 }
