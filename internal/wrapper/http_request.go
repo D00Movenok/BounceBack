@@ -7,6 +7,7 @@ import (
 	"net/http/httputil"
 	"net/netip"
 	"net/url"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -17,9 +18,27 @@ type HTTPRequest struct {
 	Request *http.Request
 }
 
+// TODO: FIX IP may be hijacked if set one of used headers.
 func (r HTTPRequest) GetIP() netip.Addr {
-	ap := netip.MustParseAddrPort(r.Request.RemoteAddr)
-	return ap.Addr()
+	var addr netip.Addr
+
+	xForwardedFor := r.Request.Header.Get("X-Forwarded-For")
+	if !addr.IsValid() && xForwardedFor != "" {
+		ip := strings.Split(xForwardedFor, ",")[0]
+		addr, _ = netip.ParseAddr(ip)
+	}
+
+	xRealIP := r.Request.Header.Get("X-Real-Ip")
+	if !addr.IsValid() && xRealIP != "" {
+		addr, _ = netip.ParseAddr(xRealIP)
+	}
+
+	if !addr.IsValid() {
+		ap := netip.MustParseAddrPort(r.Request.RemoteAddr)
+		addr = ap.Addr()
+	}
+
+	return addr
 }
 
 func (r HTTPRequest) GetRaw() ([]byte, error) {

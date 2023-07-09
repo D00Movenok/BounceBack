@@ -20,10 +20,11 @@ The tool is distributed with preconfigured lists of blocked words, blocked and a
 * Highly configurable and customizable filters pipeline with boolean-based concatenation of filters will be able to hide your infrastructure from the most keen blue eyes.
 * Integrated and curated massive blacklist of IPv4 pools and ranges known to be associated with IT Security vendors combined with IP filter to disallow them to use/attack your infrastructure.
 * Malleable C2 Profile parser is able to validate inbound HTTP(s) traffic against the Malleable's config and reject invalidated packets.
+* Out of the box domain fronting support allows you to hide your infrastructure a little bit more.
 * Ability to check the IPv4 address of request against IP Geolocation/reverse lookup data and compare it to specified regular expressions to exclude out peers connecting outside allowed companies, nations, cities, domains, etc.
 * All incoming requests may be allowed/disallowed for any time period, so you may configure work time filters.
 * Support for multiple proxies with different filter pipelines at one BounceBack instance.
-* Verbose logs mechanism allows you to analyze all incoming requests and events.
+* Verbose logging mechanism allows you to keep track of all incoming requests and events for analyzing blue team behaviour and debug issues.
 
 ## Filters
 

@@ -205,7 +205,7 @@ func NewGeolocationFilter(
 			for _, sre := range g.FieldByName(fn).Interface().([]string) {
 				re, err = regexp.Compile(sre)
 				if err != nil {
-					return nil, fmt.Errorf("can't compile regex: %w", err)
+					return nil, fmt.Errorf("can't compile regexp: %w", err)
 				}
 				reArr, _ := reflect.
 					ValueOf(gr).
@@ -544,7 +544,7 @@ func (f *GeoFilter) filterByGeoRegexp(
 		if gv.Len() == 0 || len(regexps) == 0 {
 			continue
 		}
-		// find regex match of field fn.
+		// find regexp match of field fn.
 		var m bool
 		for _, re := range regexps {
 			switch v := gv.Interface().(type) {

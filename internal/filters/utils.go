@@ -2,7 +2,6 @@ package filters
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +10,8 @@ import (
 )
 
 var (
-	ErrOddOrZero = errors.New("data length is odd or equal zero")
+	ErrOddOrZero    = errors.New("data length is odd or equal zero")
+	ErrCaseMismatch = errors.New("case mismatch")
 )
 
 func FormatStringerSlice[T fmt.Stringer](s []T) string {
@@ -54,23 +54,40 @@ func getRegexpList(path string) ([]*regexp.Regexp, error) {
 }
 
 func xorDecrypt(key []byte, data []byte) []byte {
-	out := make([]byte, len(data))
 	for i := 0; i < len(data); i++ {
-		out[i] = data[i] ^ key[i%len(key)]
+		data[i] ^= key[i%len(key)]
 	}
-	return out
+	return data
 }
 
-func netbiosDecode(data []byte) ([]byte, error) {
+func netbiosDecode(data []byte, isLowercase bool) ([]byte, error) {
 	if len(data)%2 != 0 || len(data) == 0 {
 		return nil, ErrOddOrZero
 	}
-	d := bytes.ToUpper(data)
-	for i := 0; i < len(d); i += 2 {
-		d[i/2] = ((d[i] - byte('A')) << 4) + //nolint:gomnd
-			((d[i+1] - byte('A')) & 0xF) //nolint:gomnd
+
+	var (
+		start byte
+		end   byte
+	)
+	if isLowercase {
+		start = 'a'
+		end = 'z'
+	} else {
+		start = 'A'
+		end = 'Z'
 	}
-	return d[:len(d)/2], nil
+	for _, b := range data {
+		if b < start || b > end {
+			return nil, ErrCaseMismatch
+		}
+	}
+
+	for i := 0; i < len(data); i += 2 {
+		data[i/2] = ((data[i] - start) << 4) + //nolint:gomnd
+			((data[i+1] - start) & 0xF) //nolint:gomnd
+	}
+
+	return data[:len(data)/2], nil
 }
 
 func matchByMask(s string, m string) bool {

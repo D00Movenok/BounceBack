@@ -137,6 +137,7 @@ func (p *Proxy) proxyRequest(
 	url *url.URL,
 	w http.ResponseWriter,
 	r *http.Request,
+	e wrapper.Entity,
 	logger zerolog.Logger,
 ) {
 	r.URL.Scheme = url.Scheme
@@ -145,6 +146,13 @@ func (p *Proxy) proxyRequest(
 	r.RequestURI = ""
 	r.Host = ""
 	r.Header.Del("Accept-Encoding")
+
+	xForwardedFor := r.Header.Get("X-Forwarded-For")
+	if xForwardedFor != "" {
+		r.Header.Set("X-Forwarded-For", xForwardedFor+","+e.GetIP().String())
+	} else {
+		r.Header.Set("X-Forwarded-For", e.GetIP().String())
+	}
 
 	response, err := p.client.Do(r)
 	if err != nil {
@@ -171,11 +179,12 @@ func (p *Proxy) proxyRequest(
 func (p *Proxy) processVerdict(
 	w http.ResponseWriter,
 	r *http.Request,
+	e wrapper.Entity,
 	logger zerolog.Logger,
 ) {
 	switch p.Config.FilterSettings.Action {
 	case common.ActionProxy:
-		p.proxyRequest(p.ActionURL, w, r, logger)
+		p.proxyRequest(p.ActionURL, w, r, e, logger)
 	case common.ActionRedirect:
 		http.Redirect(w, r, p.ActionURL.String(), http.StatusMovedPermanently)
 	case common.ActionDrop:
@@ -191,7 +200,7 @@ func (p *Proxy) processVerdict(
 		logger.Warn().Msg(
 			"Request was filtered, but action is None or unknown",
 		)
-		p.proxyRequest(p.TargetURL, w, r, logger)
+		p.proxyRequest(p.TargetURL, w, r, e, logger)
 	}
 }
 
@@ -221,11 +230,11 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 
 		logRequest(r, logger)
 		if !p.RunFilters(e, logger) {
-			p.processVerdict(w, r, logger)
+			p.processVerdict(w, r, e, logger)
 			return
 		}
 
-		p.proxyRequest(p.TargetURL, w, r, logger)
+		p.proxyRequest(p.TargetURL, w, r, e, logger)
 	}
 }
 

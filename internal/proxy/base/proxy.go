@@ -2,7 +2,6 @@ package base
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -13,10 +12,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-)
-
-var (
-	ErrInvalidFilter = errors.New("no such filter")
 )
 
 func NewBaseProxy(
