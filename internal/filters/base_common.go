@@ -140,7 +140,7 @@ func NewTimeFilter(
 		for _, v := range params.Weekdays {
 			d, ok := daysOfWeek[v]
 			if !ok {
-				return nil, fmt.Errorf("unknown day of week: %s", v)
+				return nil, &UnknownDayOfWeekError{day: v}
 			}
 			days = append(days, d)
 		}
@@ -367,7 +367,7 @@ func (f *TimeFilter) String() string {
 		f.from.Minute(),
 		f.to.Hour(),
 		f.to.Minute(),
-		FormatStringerSlice(f.weekdays),
+		common.FormatStringerSlice(f.weekdays),
 		f.loc.String(),
 	)
 }
@@ -404,14 +404,14 @@ func (r *GeoRegexp) String() string {
 	return fmt.Sprintf(
 		"geo(organisation=%s, country_code=%s, country=%s, "+
 			"region_code=%s, region=%s, city=%s, timezone=%s, asn=%s)",
-		FormatStringerSlice(r.Organisation),
-		FormatStringerSlice(r.CountryCode),
-		FormatStringerSlice(r.Country),
-		FormatStringerSlice(r.RegionCode),
-		FormatStringerSlice(r.Region),
-		FormatStringerSlice(r.City),
-		FormatStringerSlice(r.Timezone),
-		FormatStringerSlice(r.ASN),
+		common.FormatStringerSlice(r.Organisation),
+		common.FormatStringerSlice(r.CountryCode),
+		common.FormatStringerSlice(r.Country),
+		common.FormatStringerSlice(r.RegionCode),
+		common.FormatStringerSlice(r.Region),
+		common.FormatStringerSlice(r.City),
+		common.FormatStringerSlice(r.Timezone),
+		common.FormatStringerSlice(r.ASN),
 	)
 }
 
@@ -439,7 +439,7 @@ func (f *GeoFilter) getGeoInfoByIP(
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		time.Second*3, //nolint:gomnd
+		time.Second*5, //nolint:gomnd
 	)
 	defer cancel()
 
@@ -599,7 +599,7 @@ func (f *GeoFilter) String() string {
 	return fmt.Sprintf(
 		"Geo(path=%s, geolocations=%s)",
 		f.path,
-		FormatStringerSlice(f.geo),
+		common.FormatStringerSlice(f.geo),
 	)
 }
 

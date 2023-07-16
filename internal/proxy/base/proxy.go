@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
@@ -14,14 +15,24 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	defaultTimeout = time.Second * 10
+)
+
 func NewBaseProxy(
 	cfg common.ProxyConfig,
 	fs *filters.FilterSet,
 	db *database.DB,
+	actions []string,
 ) (*Proxy, error) {
 	logger := log.With().
 		Str("proxy", cfg.Name).
 		Logger()
+
+	err := verifyAction(cfg.FilterSettings.Action, actions)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, f := range cfg.Filters {
 		_, ok := fs.Get(f)
@@ -32,6 +43,14 @@ func NewBaseProxy(
 				cfg.Name,
 			)
 		}
+	}
+
+	if cfg.Timeout == 0 {
+		cfg.Timeout = defaultTimeout
+		logger.Debug().Msgf(
+			"Using default timeout: %s",
+			cfg.Timeout,
+		)
 	}
 
 	base := &Proxy{
@@ -45,7 +64,8 @@ func NewBaseProxy(
 	}
 
 	if cfg.TLS != nil {
-		cert, err := tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
+		var cert tls.Certificate
+		cert, err = tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
 		if err != nil {
 			return nil, fmt.Errorf("can't load tls config: %w", err)
 		}
@@ -73,8 +93,8 @@ type Proxy struct {
 
 func (p *Proxy) GetLogger() *zerolog.Logger {
 	logger := p.Logger.With().
-		Str("listen", p.Config.Listen).
-		Str("target", p.Config.Target).
+		Str("listen", p.Config.ListenAddr).
+		Str("target", p.Config.TargetAddr).
 		Str("type", p.Config.Type).
 		Logger()
 	return &logger
@@ -131,5 +151,5 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 
 func (p *Proxy) String() string {
 	return fmt.Sprintf("%s proxy \"%s\" (%s->%s)",
-		p.Config.Type, p.Config.Name, p.Config.Listen, p.Config.Target)
+		p.Config.Type, p.Config.Name, p.Config.ListenAddr, p.Config.TargetAddr)
 }

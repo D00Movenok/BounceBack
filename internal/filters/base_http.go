@@ -3,7 +3,6 @@ package filters
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+// TODO: add unit tests for malleable filter.
 func NewMalleableFilter(
 	_ *database.DB,
 	_ FilterSet,
@@ -298,7 +298,7 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 		case "uri-append":
 			uriTransforms = transform
 		default:
-			return false, errors.New("unknown transform: " + last.Func)
+			return false, &UnknownTransformError{transform: last.Func}
 		}
 	}
 
@@ -550,6 +550,6 @@ func (f *MallebaleFilter) String() string {
 	return fmt.Sprintf(
 		"Malleable(profile=%s, exclude=%s)",
 		f.path,
-		FormatStringerSlice(f.exclude),
+		common.FormatStringerSlice(f.exclude),
 	)
 }

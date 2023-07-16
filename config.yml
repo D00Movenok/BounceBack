@@ -168,8 +168,8 @@ filters:
 proxies:
   - name: example http proxy
     type: http
-    listen: 0.0.0.0:5001
-    target: http://127.0.0.1:5002
+    listen: 0.0.0.0:80
+    target: http://127.0.0.1:8080
     timeout: 10s
     # tls:
     #   cert: testdata/tls/cert.pem
@@ -187,3 +187,23 @@ proxies:
       # - example_not_time_filter
       - default_regexp_filter
       # - example_malleable_filter
+
+  - name: example tcp proxy
+    type: tcp
+    listen: 0.0.0.0:4443
+    target: tcp://127.0.0.1:4444
+    timeout: 10s
+    # tls:
+    #   cert: testdata/tls/cert.pem
+    #   key: testdata/tls/key.pem
+    filter_settings:
+      action: drop
+      noreject_threshold: 5
+      reject_threshold: 5
+    filters:
+      - default_ip_banlist
+      # - default_ip_allowlist
+      - default_geo_filter
+      - default_lookup_filter
+      # - example_not_time_filter
+      - default_regexp_filter

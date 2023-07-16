@@ -2,12 +2,10 @@ package http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
@@ -20,12 +18,15 @@ import (
 
 const (
 	ProxyType = "http"
-
-	defaultTimeout = time.Second * 10
 )
 
 var (
-	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
+	AllowedActions = []string{
+		common.ActionProxy,
+		common.ActionRedirect,
+		common.ActionDrop,
+		common.ActionNone,
+	}
 )
 
 func NewProxy(
@@ -33,7 +34,12 @@ func NewProxy(
 	fs *filters.FilterSet,
 	db *database.DB,
 ) (*Proxy, error) {
-	target, err := url.Parse(cfg.Target)
+	baseProxy, err := base.NewBaseProxy(cfg, fs, db, AllowedActions)
+	if err != nil {
+		return nil, fmt.Errorf("can't create base proxy: %w", err)
+	}
+
+	target, err := url.Parse(cfg.TargetAddr)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse target url: %w", err)
 	}
@@ -47,26 +53,13 @@ func NewProxy(
 		}
 	}
 
-	baseProxy, err := base.NewBaseProxy(cfg, fs, db)
-	if err != nil {
-		return nil, fmt.Errorf("can't create base proxy: %w", err)
-	}
-
-	if cfg.Timeout == 0 {
-		cfg.Timeout = defaultTimeout
-		baseProxy.Logger.Debug().Msgf(
-			"Using default timeout: %s",
-			cfg.Timeout,
-		)
-	}
-
 	p := &Proxy{
 		Proxy:     baseProxy,
 		TargetURL: target,
 		ActionURL: action,
 
 		client: &http.Client{
-			Timeout: cfg.Timeout,
+			Timeout: baseProxy.Config.Timeout,
 			CheckRedirect: func(
 				req *http.Request,
 				via []*http.Request,
@@ -77,10 +70,10 @@ func NewProxy(
 	}
 
 	p.server = &http.Server{
-		Addr:         p.Config.Listen,
-		ReadTimeout:  cfg.Timeout,
-		WriteTimeout: cfg.Timeout,
-		IdleTimeout:  cfg.Timeout,
+		Addr:         p.Config.ListenAddr,
+		ReadTimeout:  baseProxy.Config.Timeout,
+		WriteTimeout: baseProxy.Config.Timeout,
+		IdleTimeout:  baseProxy.Config.Timeout,
 		Handler:      p.getHandler(),
 	}
 
@@ -126,7 +119,7 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return ErrShutdownTimeout
+		return base.ErrShutdownTimeout
 	case <-done:
 		break
 	}
@@ -142,6 +135,7 @@ func (p *Proxy) proxyRequest(
 ) {
 	r.URL.Scheme = url.Scheme
 	r.URL.Host = url.Host
+	r.URL.Path = url.Path + r.URL.Path
 
 	r.RequestURI = ""
 	r.Host = ""
@@ -195,11 +189,9 @@ func (p *Proxy) processVerdict(
 			handleError(w)
 			return
 		}
-		_ = conn.Close()
+		conn.Close()
 	default:
-		logger.Warn().Msg(
-			"Request was filtered, but action is None or unknown",
-		)
+		logger.Warn().Msg("Request was filtered, but action is none")
 		p.proxyRequest(p.TargetURL, w, r, e, logger)
 	}
 }

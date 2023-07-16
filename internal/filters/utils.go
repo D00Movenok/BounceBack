@@ -2,29 +2,11 @@ package filters
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 )
-
-var (
-	ErrOddOrZero    = errors.New("data length is odd or equal zero")
-	ErrCaseMismatch = errors.New("case mismatch")
-)
-
-func FormatStringerSlice[T fmt.Stringer](s []T) string {
-	slice := make([]string, 0, len(s))
-	for _, d := range s {
-		slice = append(slice, d.String())
-	}
-	return FormatStringSlice(slice)
-}
-
-func FormatStringSlice(s []string) string {
-	return "[" + strings.Join(s, ", ") + "]"
-}
 
 func getRegexpList(path string) ([]*regexp.Regexp, error) {
 	var (

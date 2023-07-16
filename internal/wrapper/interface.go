@@ -1,14 +1,9 @@
 package wrapper
 
 import (
-	"errors"
 	"net/http"
 	"net/netip"
 	"net/url"
-)
-
-var (
-	ErrNotSupported = errors.New("not supported")
 )
 
 type Entity interface {

@@ -19,7 +19,7 @@ type HTTPRequest struct {
 }
 
 // TODO: FIX IP may be hijacked if set one of used headers.
-func (r HTTPRequest) GetIP() netip.Addr {
+func (r *HTTPRequest) GetIP() netip.Addr {
 	var addr netip.Addr
 
 	xForwardedFor := r.Request.Header.Get("X-Forwarded-For")
@@ -41,7 +41,7 @@ func (r HTTPRequest) GetIP() netip.Addr {
 	return addr
 }
 
-func (r HTTPRequest) GetRaw() ([]byte, error) {
+func (r *HTTPRequest) GetRaw() ([]byte, error) {
 	body, err := WrapHTTPBody(r.Request.Body)
 	if err != nil {
 		return nil, fmt.Errorf("can't create new body reader: %w", err)
@@ -57,7 +57,7 @@ func (r HTTPRequest) GetRaw() ([]byte, error) {
 	return data, nil
 }
 
-func (r HTTPRequest) GetBody() ([]byte, error) {
+func (r *HTTPRequest) GetBody() ([]byte, error) {
 	defer r.resetBody()
 	buf, err := io.ReadAll(r.Request.Body)
 	if err != nil {
@@ -66,23 +66,23 @@ func (r HTTPRequest) GetBody() ([]byte, error) {
 	return buf, nil
 }
 
-func (r HTTPRequest) GetCookies() ([]*http.Cookie, error) {
+func (r *HTTPRequest) GetCookies() ([]*http.Cookie, error) {
 	return r.Request.Cookies(), nil
 }
 
-func (r HTTPRequest) GetHeaders() (map[string][]string, error) {
+func (r *HTTPRequest) GetHeaders() (map[string][]string, error) {
 	return r.Request.Header, nil
 }
 
-func (r HTTPRequest) GetURL() (*url.URL, error) {
+func (r *HTTPRequest) GetURL() (*url.URL, error) {
 	return r.Request.URL, nil
 }
 
-func (r HTTPRequest) GetMethod() (string, error) {
+func (r *HTTPRequest) GetMethod() (string, error) {
 	return r.Request.Method, nil
 }
 
-func (r HTTPRequest) resetBody() {
+func (r *HTTPRequest) resetBody() {
 	if err := r.Request.Body.Close(); err != nil {
 		log.Error().Err(err).Msg("Can't reset request body")
 	}

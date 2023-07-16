@@ -10,6 +10,7 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/http"
+	"github.com/D00Movenok/BounceBack/internal/proxy/tcp"
 
 	"github.com/rs/zerolog/log"
 )
@@ -32,8 +33,16 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 					err,
 				)
 			}
+		case tcp.ProxyType:
+			if p, err = tcp.NewProxy(pc, fs, db); err != nil {
+				return nil, fmt.Errorf(
+					"can't create proxy \"%s\": %w",
+					pc.Name,
+					err,
+				)
+			}
 		default:
-			return nil, fmt.Errorf("invalid proxy type: %s", pc.Type)
+			return nil, &InvalidProxyTypeError{t: pc.Type}
 		}
 		proxies = append(proxies, p)
 	}
@@ -63,7 +72,7 @@ func (m *Manager) StartAll() error {
 					)
 				}
 			}
-			return fmt.Errorf("can't start %s: %w", p, err)
+			return fmt.Errorf("can't start \"%s\": %w", p, err)
 		}
 	}
 	return nil
@@ -79,7 +88,7 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 			defer wg.Done()
 			if err := p.Shutdown(ctx); err != nil {
 				select {
-				case errCh <- fmt.Errorf("can't shutdown %s: %w", p, err):
+				case errCh <- fmt.Errorf("can't shutdown \"%s\": %w", p, err):
 				default:
 				}
 			}
