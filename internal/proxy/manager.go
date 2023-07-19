@@ -11,6 +11,7 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/http"
 	"github.com/D00Movenok/BounceBack/internal/proxy/tcp"
+	"github.com/D00Movenok/BounceBack/internal/proxy/udp"
 
 	"github.com/rs/zerolog/log"
 )
@@ -21,30 +22,25 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 		return nil, fmt.Errorf("can't create filters: %w", err)
 	}
 
-	proxies := make([]Proxy, 0)
-	for _, pc := range cfg.Proxies {
-		var p Proxy
+	proxies := make([]Proxy, len(cfg.Proxies))
+	for i, pc := range cfg.Proxies {
 		switch pc.Type {
 		case http.ProxyType:
-			if p, err = http.NewProxy(pc, fs, db); err != nil {
-				return nil, fmt.Errorf(
-					"can't create proxy \"%s\": %w",
-					pc.Name,
-					err,
-				)
-			}
+			proxies[i], err = http.NewProxy(pc, fs, db)
 		case tcp.ProxyType:
-			if p, err = tcp.NewProxy(pc, fs, db); err != nil {
-				return nil, fmt.Errorf(
-					"can't create proxy \"%s\": %w",
-					pc.Name,
-					err,
-				)
-			}
+			proxies[i], err = tcp.NewProxy(pc, fs, db)
+		case udp.ProxyType:
+			proxies[i], err = udp.NewProxy(pc, fs, db)
 		default:
 			return nil, &InvalidProxyTypeError{t: pc.Type}
 		}
-		proxies = append(proxies, p)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"can't create proxy \"%s\": %w",
+				pc.Name,
+				err,
+			)
+		}
 	}
 
 	m := &Manager{proxies}

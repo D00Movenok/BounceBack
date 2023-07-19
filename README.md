@@ -43,7 +43,7 @@ Filters configuration page may be found [here](https://github.com/D00Movenok/Bou
 
 ## Proxies
 
-At the moment, BounceBack only supports the HTTP(s) and raw TCP, but in the future I plan to add DNS and raw UDP protocols.
+At the moment, BounceBack supports the HTTP(s), raw TCP and UDP, but in the future I plan to add DNS protocols.
 
 Proxies configuration page may be found [here](https://github.com/D00Movenok/BounceBack/wiki/2.-Proxies).
 

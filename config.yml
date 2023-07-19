@@ -19,7 +19,7 @@ filters:
   # ANY "geolocations" array element.
   # May be combined with "not" wrapper for organisations allowlist.
   # Now supported IP lookup services. How to check IP info:
-  # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP/'
+  # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP'
   # * ipapi.co: curl -s 'https://ipapi.co/TARGET-IP/json/'
   # PARAMS:
   # * list - path to file with regexps (regexp re2), may be empty.
@@ -196,6 +196,23 @@ proxies:
     # tls:
     #   cert: testdata/tls/cert.pem
     #   key: testdata/tls/key.pem
+    filter_settings:
+      action: drop
+      noreject_threshold: 5
+      reject_threshold: 5
+    filters:
+      - default_ip_banlist
+      # - default_ip_allowlist
+      - default_geo_filter
+      - default_lookup_filter
+      # - example_not_time_filter
+      - default_regexp_filter
+
+  - name: example udp proxy
+    type: udp
+    listen: 0.0.0.0:53
+    target: 127.0.0.1:50053
+    timeout: 10s
     filter_settings:
       action: drop
       noreject_threshold: 5

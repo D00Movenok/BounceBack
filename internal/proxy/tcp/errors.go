@@ -1,12 +1,7 @@
 package tcp
 
 import (
-	"errors"
 	"fmt"
-)
-
-var (
-	ErrDropped = errors.New("connection dropped")
 )
 
 type UnknownShemeError struct {

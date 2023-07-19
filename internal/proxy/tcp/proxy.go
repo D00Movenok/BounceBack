@@ -155,10 +155,11 @@ func (p *Proxy) oneSideHandler(
 		}
 		e.MU.Unlock()
 
+		var nw int
 		_ = dst.SetDeadline(time.Now().Add(p.Config.Timeout))
-		nw, ew := dst.Write(data)
-		if ew != nil {
-			return fmt.Errorf("proxy connection write: %w", ew)
+		nw, err = dst.Write(data)
+		if err != nil {
+			return fmt.Errorf("proxy connection write: %w", err)
 		}
 		if nr != nw {
 			return fmt.Errorf("proxy connection write: %w", io.ErrShortWrite)
@@ -221,7 +222,7 @@ func (p *Proxy) handleConnection(src net.Conn) {
 			dst,
 			logger,
 			ingress,
-		); err != nil && !isConnectionClosedErr(err) {
+		); err != nil && !base.IsConnectionClosed(err) {
 			logger.Error().Err(err).Msg("Connection error")
 		}
 
@@ -239,9 +240,6 @@ func (p *Proxy) handleConnection(src net.Conn) {
 
 func (p *Proxy) serve() {
 	defer p.WG.Done()
-
-	p.Logger.Info().Msg("Starting")
-
 	for {
 		conn, err := p.listener.Accept()
 		if err != nil {

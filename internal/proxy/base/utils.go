@@ -1,7 +1,9 @@
 package base
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"golang.org/x/exp/slices"
@@ -25,4 +27,14 @@ func verifyAction(a string, allowed []string) error {
 		return &ActionNotAllowedError{action: a, allowed: allowed}
 	}
 	return nil
+}
+
+func IsConnectionClosed(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, ErrDropped) {
+		return true
+	}
+	return strings.Contains(err.Error(), "use of closed network connection")
 }
