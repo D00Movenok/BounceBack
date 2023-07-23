@@ -9,10 +9,11 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/miekg/dns"
 	"github.com/rs/zerolog/log"
 )
 
-// Request is a wrapper around http.Request implementing Entity interface.
+// HTTPRequest is a wrapper around http.Request implementing Entity interface.
 // It's expected that Request.Body is already wrapped with BodyReader.
 type HTTPRequest struct {
 	Request *http.Request
@@ -86,4 +87,8 @@ func (r *HTTPRequest) resetBody() {
 	if err := r.Request.Body.Close(); err != nil {
 		log.Error().Err(err).Msg("Can't reset request body")
 	}
+}
+
+func (r *HTTPRequest) GetQuestions() ([]dns.Question, error) {
+	return nil, ErrNotSupported
 }

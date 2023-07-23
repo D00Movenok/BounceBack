@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+
+	"github.com/miekg/dns"
 )
 
 type Entity interface {
@@ -16,4 +18,7 @@ type Entity interface {
 	GetHeaders() (map[string][]string, error)
 	GetURL() (*url.URL, error)
 	GetMethod() (string, error)
+
+	// DNS
+	GetQuestions() ([]dns.Question, error)
 }

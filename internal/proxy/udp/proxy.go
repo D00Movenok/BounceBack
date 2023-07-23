@@ -51,7 +51,7 @@ func NewProxy(
 
 	ap, err := netip.ParseAddrPort(cfg.TargetAddr)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse SchemeAddrPort: %w", err)
+		return nil, fmt.Errorf("can't parse AddrPort: %w", err)
 	}
 	p.TargetURL = ap
 
@@ -185,11 +185,11 @@ func (p *Proxy) handleConnection(src *net.UDPAddr, data []byte) {
 		logger.Debug().Msg("New request")
 	}
 
-	entity := &wrapper.RawPacket{
+	e := &wrapper.RawPacket{
 		Content: data,
 		From:    from,
 	}
-	if !p.RunFilters(entity, logger) && p.processVerdict(c, logger) {
+	if !p.RunFilters(e, logger) && p.processVerdict(c, logger) {
 		return
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/filters"
+	"github.com/D00Movenok/BounceBack/internal/proxy/dns"
 	"github.com/D00Movenok/BounceBack/internal/proxy/http"
 	"github.com/D00Movenok/BounceBack/internal/proxy/tcp"
 	"github.com/D00Movenok/BounceBack/internal/proxy/udp"
@@ -27,6 +28,8 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 		switch pc.Type {
 		case http.ProxyType:
 			proxies[i], err = http.NewProxy(pc, fs, db)
+		case dns.ProxyType:
+			proxies[i], err = dns.NewProxy(pc, fs, db)
 		case tcp.ProxyType:
 			proxies[i], err = tcp.NewProxy(pc, fs, db)
 		case udp.ProxyType:

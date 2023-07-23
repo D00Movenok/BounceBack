@@ -12,6 +12,7 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/filters"
+	"github.com/miekg/dns"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -57,6 +58,12 @@ func (m *MockEntity) GetURL() (*url.URL, error) {
 func (m *MockEntity) GetMethod() (string, error) {
 	args := m.Called()
 	return args.String(0), args.Error(1)
+}
+
+func (m *MockEntity) GetQuestions() ([]dns.Question, error) {
+	args := m.Called()
+	//nolint: wrapcheck // mock
+	return args.Get(0).([]dns.Question), args.Error(1)
 }
 
 func mod(x int, y int) int {

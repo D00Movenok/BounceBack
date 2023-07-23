@@ -3,6 +3,8 @@ package base
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
@@ -37,4 +39,8 @@ func IsConnectionClosed(err error) bool {
 		return true
 	}
 	return strings.Contains(err.Error(), "use of closed network connection")
+}
+
+func NetAddrToNetipAddrPort(a net.Addr) netip.AddrPort {
+	return netip.MustParseAddrPort(a.String())
 }

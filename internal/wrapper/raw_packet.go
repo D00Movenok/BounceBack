@@ -5,6 +5,8 @@ import (
 	"net/netip"
 	"net/url"
 	"sync"
+
+	"github.com/miekg/dns"
 )
 
 // RawPacket is a wrapper around raw data (e.g. tcp packet)
@@ -45,4 +47,8 @@ func (p *RawPacket) GetURL() (*url.URL, error) {
 
 func (p *RawPacket) GetMethod() (string, error) {
 	return "", ErrNotSupported
+}
+
+func (p *RawPacket) GetQuestions() ([]dns.Question, error) {
+	return nil, ErrNotSupported
 }

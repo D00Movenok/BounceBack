@@ -173,7 +173,7 @@ func (p *Proxy) handleConnection(src net.Conn) {
 	defer p.WG.Done()
 	defer src.Close()
 
-	from := netip.MustParseAddrPort(src.RemoteAddr().String())
+	from := base.NetAddrToNetipAddrPort(src.RemoteAddr())
 	logger := p.Logger.With().
 		Stringer("from", from.Addr()).
 		Logger()
@@ -182,11 +182,11 @@ func (p *Proxy) handleConnection(src net.Conn) {
 
 	// first packet analysis so no data was read
 	// TODO: drop filtered packets after SYN, not ACK.
-	entity := &wrapper.RawPacket{
+	e := &wrapper.RawPacket{
 		Content: []byte{},
 		From:    from.Addr(),
 	}
-	if !p.RunFilters(entity, logger) && p.processVerdict(src, logger) {
+	if !p.RunFilters(e, logger) && p.processVerdict(src, logger) {
 		return
 	}
 
@@ -217,7 +217,7 @@ func (p *Proxy) handleConnection(src net.Conn) {
 	) {
 		defer wg.Done()
 		if err = p.oneSideHandler(
-			entity,
+			e,
 			src,
 			dst,
 			logger,

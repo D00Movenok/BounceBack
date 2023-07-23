@@ -39,11 +39,19 @@ BounceBack currently supports the following filters:
 * Malleable C2 profiles traffic validation
 * Work (or not) hours filter
 
+Custom filters may be easily added, just register your [FilterBaseCreator](/internal/filters/default.go#L9) or [FilterWrapperCreator](/internal/filters/default.go#L3). See already created [FilterBaseCreators](/internal/filters/base_common.go) and [FilterWrapperCreators](/internal/filters/wrappers.go)
+
 Filters configuration page may be found [here](https://github.com/D00Movenok/BounceBack/wiki/1.-Filters).
 
 ## Proxies
 
-At the moment, BounceBack supports the HTTP(s), raw TCP and UDP, but in the future I plan to add DNS protocols.
+At the moment, BounceBack supports the following protocols:
+
+* HTTP(s) for your web infrastructure
+* DNS for your DNS tunnels
+* Raw TCP (with or without tls) and UDP for custom protocols
+
+Custom protocols may be easily added, just register your new type [in manager](/internal/proxy/manager.go). Example proxy realizations may be found [here](/internal/proxy).
 
 Proxies configuration page may be found [here](https://github.com/D00Movenok/BounceBack/wiki/2.-Proxies).
 
