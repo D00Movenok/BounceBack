@@ -9,7 +9,10 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/filters"
+	"github.com/D00Movenok/BounceBack/internal/proxy/dns"
 	"github.com/D00Movenok/BounceBack/internal/proxy/http"
+	"github.com/D00Movenok/BounceBack/internal/proxy/tcp"
+	"github.com/D00Movenok/BounceBack/internal/proxy/udp"
 
 	"github.com/rs/zerolog/log"
 )
@@ -20,22 +23,27 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 		return nil, fmt.Errorf("can't create filters: %w", err)
 	}
 
-	proxies := make([]Proxy, 0)
-	for _, pc := range cfg.Proxies {
-		var p Proxy
+	proxies := make([]Proxy, len(cfg.Proxies))
+	for i, pc := range cfg.Proxies {
 		switch pc.Type {
 		case http.ProxyType:
-			if p, err = http.NewProxy(pc, fs, db); err != nil {
-				return nil, fmt.Errorf(
-					"can't create proxy \"%s\": %w",
-					pc.Name,
-					err,
-				)
-			}
+			proxies[i], err = http.NewProxy(pc, fs, db)
+		case dns.ProxyType:
+			proxies[i], err = dns.NewProxy(pc, fs, db)
+		case tcp.ProxyType:
+			proxies[i], err = tcp.NewProxy(pc, fs, db)
+		case udp.ProxyType:
+			proxies[i], err = udp.NewProxy(pc, fs, db)
 		default:
-			return nil, fmt.Errorf("invalid proxy type: %s", pc.Type)
+			return nil, &InvalidProxyTypeError{t: pc.Type}
 		}
-		proxies = append(proxies, p)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"can't create proxy \"%s\": %w",
+				pc.Name,
+				err,
+			)
+		}
 	}
 
 	m := &Manager{proxies}
@@ -63,7 +71,7 @@ func (m *Manager) StartAll() error {
 					)
 				}
 			}
-			return fmt.Errorf("can't start %s: %w", p, err)
+			return fmt.Errorf("can't start \"%s\": %w", p, err)
 		}
 	}
 	return nil
@@ -79,7 +87,7 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 			defer wg.Done()
 			if err := p.Shutdown(ctx); err != nil {
 				select {
-				case errCh <- fmt.Errorf("can't shutdown %s: %w", p, err):
+				case errCh <- fmt.Errorf("can't shutdown \"%s\": %w", p, err):
 				default:
 				}
 			}

@@ -275,6 +275,9 @@ issues:
     - source: "pflag\\."
       linters:
         - gochecknoglobals
+    - source: "AllowedActions ="
+      linters:
+        - gochecknoglobals
     - path: "_test\\.go"
       linters:
         - funlen

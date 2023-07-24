@@ -1,7 +1,6 @@
 package filters
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -10,10 +9,6 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
-)
-
-var (
-	ErrInvalidFilterArgs = errors.New("invalid filter arguments")
 )
 
 func NewCompositeAndFilter(
@@ -35,7 +30,7 @@ func NewCompositeAndFilter(
 	for _, name := range params.Filters {
 		filter, ok := fs.Get(name)
 		if !ok {
-			return nil, fmt.Errorf("invalid filter name: %s", name)
+			return nil, &InvalidFilterNameError{filter: name}
 		}
 		f.filters = append(f.filters, filter)
 	}
@@ -62,7 +57,7 @@ func NewCompositeOrFilter(
 	for _, name := range params.Filters {
 		filter, ok := fs.Get(name)
 		if !ok {
-			return nil, fmt.Errorf("invalid filter name: %s", name)
+			return nil, &InvalidFilterNameError{filter: name}
 		}
 		f.filters = append(f.filters, filter)
 	}
@@ -88,7 +83,7 @@ func NewCompositeNotFilter(
 	name := params.Filter
 	f, ok := fs.Get(name)
 	if !ok {
-		return nil, fmt.Errorf("invalid filter name: %s", name)
+		return nil, &InvalidFilterNameError{filter: name}
 	}
 
 	return CompositeNotFilter{filter: f}, nil
@@ -109,7 +104,7 @@ func (f CompositeAndFilter) Apply(
 	for _, filter := range f.filters {
 		res, err := filter.Apply(e, logger)
 		if err != nil {
-			return false, fmt.Errorf("error in filter %T: %w", filter, err)
+			return false, fmt.Errorf("error in filter \"%T\": %w", filter, err)
 		}
 		if !res {
 			return false, nil
@@ -141,7 +136,7 @@ func (r CompositeOrFilter) Apply(
 	for _, filter := range r.filters {
 		res, err := filter.Apply(e, logger)
 		if err != nil {
-			return false, fmt.Errorf("error in filter %T: %w", filter, err)
+			return false, fmt.Errorf("error in filter \"%T\": %w", filter, err)
 		}
 		if res {
 			return true, nil
@@ -172,7 +167,7 @@ func (f CompositeNotFilter) Apply(
 ) (bool, error) {
 	res, err := f.filter.Apply(e, logger)
 	if err != nil {
-		return false, fmt.Errorf("error in filter %T: %w", f.filter, err)
+		return false, fmt.Errorf("error in filter \"%T\": %w", f.filter, err)
 	}
 	return !res, nil
 }

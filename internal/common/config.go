@@ -31,8 +31,8 @@ type FilterSettings struct {
 type ProxyConfig struct {
 	Name           string         `mapstructure:"name"`
 	Type           string         `mapstructure:"type"`
-	Listen         string         `mapstructure:"listen"`
-	Target         string         `mapstructure:"target"`
+	ListenAddr     string         `mapstructure:"listen"`
+	TargetAddr     string         `mapstructure:"target"`
 	Timeout        time.Duration  `mapstructure:"timeout"`
 	TLS            *TLS           `mapstructure:"tls"`
 	FilterSettings FilterSettings `mapstructure:"filter_settings"`

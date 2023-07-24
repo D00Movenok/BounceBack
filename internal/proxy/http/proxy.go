@@ -2,12 +2,10 @@ package http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
@@ -20,12 +18,15 @@ import (
 
 const (
 	ProxyType = "http"
-
-	defaultTimeout = time.Second * 10
 )
 
 var (
-	ErrShutdownTimeout = errors.New("proxy shutdown timeout")
+	AllowedActions = []string{
+		common.ActionProxy,
+		common.ActionRedirect,
+		common.ActionDrop,
+		common.ActionNone,
+	}
 )
 
 func NewProxy(
@@ -33,7 +34,12 @@ func NewProxy(
 	fs *filters.FilterSet,
 	db *database.DB,
 ) (*Proxy, error) {
-	target, err := url.Parse(cfg.Target)
+	baseProxy, err := base.NewBaseProxy(cfg, fs, db, AllowedActions)
+	if err != nil {
+		return nil, fmt.Errorf("can't create base proxy: %w", err)
+	}
+
+	target, err := url.Parse(cfg.TargetAddr)
 	if err != nil {
 		return nil, fmt.Errorf("can't parse target url: %w", err)
 	}
@@ -47,26 +53,13 @@ func NewProxy(
 		}
 	}
 
-	baseProxy, err := base.NewBaseProxy(cfg, fs, db)
-	if err != nil {
-		return nil, fmt.Errorf("can't create base proxy: %w", err)
-	}
-
-	if cfg.Timeout == 0 {
-		cfg.Timeout = defaultTimeout
-		baseProxy.Logger.Debug().Msgf(
-			"Using default timeout: %s",
-			cfg.Timeout,
-		)
-	}
-
 	p := &Proxy{
 		Proxy:     baseProxy,
 		TargetURL: target,
 		ActionURL: action,
 
 		client: &http.Client{
-			Timeout: cfg.Timeout,
+			Timeout: baseProxy.Config.Timeout,
 			CheckRedirect: func(
 				req *http.Request,
 				via []*http.Request,
@@ -77,10 +70,10 @@ func NewProxy(
 	}
 
 	p.server = &http.Server{
-		Addr:         p.Config.Listen,
-		ReadTimeout:  cfg.Timeout,
-		WriteTimeout: cfg.Timeout,
-		IdleTimeout:  cfg.Timeout,
+		Addr:         p.Config.ListenAddr,
+		ReadTimeout:  baseProxy.Config.Timeout,
+		WriteTimeout: baseProxy.Config.Timeout,
+		IdleTimeout:  baseProxy.Config.Timeout,
 		Handler:      p.getHandler(),
 	}
 
@@ -126,7 +119,7 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return ErrShutdownTimeout
+		return base.ErrShutdownTimeout
 	case <-done:
 		break
 	}
@@ -137,14 +130,23 @@ func (p *Proxy) proxyRequest(
 	url *url.URL,
 	w http.ResponseWriter,
 	r *http.Request,
+	e wrapper.Entity,
 	logger zerolog.Logger,
 ) {
 	r.URL.Scheme = url.Scheme
 	r.URL.Host = url.Host
+	r.URL.Path = url.Path + r.URL.Path
 
 	r.RequestURI = ""
 	r.Host = ""
 	r.Header.Del("Accept-Encoding")
+
+	xForwardedFor := r.Header.Get("X-Forwarded-For")
+	if xForwardedFor != "" {
+		r.Header.Set("X-Forwarded-For", xForwardedFor+","+e.GetIP().String())
+	} else {
+		r.Header.Set("X-Forwarded-For", e.GetIP().String())
+	}
 
 	response, err := p.client.Do(r)
 	if err != nil {
@@ -171,11 +173,12 @@ func (p *Proxy) proxyRequest(
 func (p *Proxy) processVerdict(
 	w http.ResponseWriter,
 	r *http.Request,
+	e wrapper.Entity,
 	logger zerolog.Logger,
 ) {
 	switch p.Config.FilterSettings.Action {
 	case common.ActionProxy:
-		p.proxyRequest(p.ActionURL, w, r, logger)
+		p.proxyRequest(p.ActionURL, w, r, e, logger)
 	case common.ActionRedirect:
 		http.Redirect(w, r, p.ActionURL.String(), http.StatusMovedPermanently)
 	case common.ActionDrop:
@@ -186,12 +189,10 @@ func (p *Proxy) processVerdict(
 			handleError(w)
 			return
 		}
-		_ = conn.Close()
+		conn.Close()
 	default:
-		logger.Warn().Msg(
-			"Request was filtered, but action is None or unknown",
-		)
-		p.proxyRequest(p.TargetURL, w, r, logger)
+		logger.Warn().Msg("Request was filtered, but action is none")
+		p.proxyRequest(p.TargetURL, w, r, e, logger)
 	}
 }
 
@@ -221,11 +222,11 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 
 		logRequest(r, logger)
 		if !p.RunFilters(e, logger) {
-			p.processVerdict(w, r, logger)
+			p.processVerdict(w, r, e, logger)
 			return
 		}
 
-		p.proxyRequest(p.TargetURL, w, r, logger)
+		p.proxyRequest(p.TargetURL, w, r, e, logger)
 	}
 }
 

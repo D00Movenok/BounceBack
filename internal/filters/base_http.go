@@ -3,7 +3,6 @@ package filters
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+// TODO: add unit tests for malleable filter.
 func NewMalleableFilter(
 	_ *database.DB,
 	_ FilterSet,
@@ -52,7 +52,7 @@ func NewMalleableFilter(
 		var re *regexp.Regexp
 		re, err = regexp.Compile(r)
 		if err != nil {
-			return nil, fmt.Errorf("can't compile regex: %w", err)
+			return nil, fmt.Errorf("can't compile regexp: %w", err)
 		}
 		filter.exclude = append(filter.exclude, re)
 	}
@@ -298,7 +298,7 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 		case "uri-append":
 			uriTransforms = transform
 		default:
-			return false, errors.New("unknown transform: " + last.Func)
+			return false, &UnknownTransformError{transform: last.Func}
 		}
 	}
 
@@ -354,8 +354,8 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 
 func (f *MallebaleFilter) verifyMethod(
 	e wrapper.Entity,
-	v string,
-	dv string,
+	method string,
+	defaultMethod string,
 ) (bool, error) {
 	m, err := e.GetMethod()
 	if err != nil {
@@ -363,7 +363,7 @@ func (f *MallebaleFilter) verifyMethod(
 	}
 
 	// verify method
-	if m != v && dv == "" && m != dv {
+	if m != method && defaultMethod == "" && m != defaultMethod {
 		return false, nil
 	}
 
@@ -503,7 +503,7 @@ func (f *MallebaleFilter) verifyDecoding(
 	)
 
 	d := data
-	t := transforms[:len(transforms)-1]
+	t := transforms[:len(transforms)-1] // last transform is where to store data
 	for i := len(t) - 1; i >= 0; i-- {
 		t := t[i]
 		switch t.Func {
@@ -535,7 +535,7 @@ func (f *MallebaleFilter) verifyDecoding(
 			}
 			d = xorDecrypt(d[:4], d[4:])
 		case "netbios", "netbiosu":
-			d, err = netbiosDecode(d)
+			d, err = netbiosDecode(d, t.Func == "netbios")
 			if err != nil {
 				return false
 			}
@@ -550,6 +550,6 @@ func (f *MallebaleFilter) String() string {
 	return fmt.Sprintf(
 		"Malleable(profile=%s, exclude=%s)",
 		f.path,
-		FormatStringerSlice(f.exclude),
+		common.FormatStringerSlice(f.exclude),
 	)
 }

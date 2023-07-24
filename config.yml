@@ -1,3 +1,5 @@
+# full filters configuration info can be found here:
+# https://github.com/D00Movenok/BounceBack/wiki/1.-Filters
 filters:
   # "ip" filter fires only when "list" contains INGRESS IP address.
   # May be combined with "not" wrapper for allowlist.
@@ -19,7 +21,7 @@ filters:
   # ANY "geolocations" array element.
   # May be combined with "not" wrapper for organisations allowlist.
   # Now supported IP lookup services. How to check IP info:
-  # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP/'
+  # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP'
   # * ipapi.co: curl -s 'https://ipapi.co/TARGET-IP/json/'
   # PARAMS:
   # * list - path to file with regexps (regexp re2), may be empty.
@@ -165,11 +167,13 @@ filters:
     params:
       filter: default_ip_allowlist
 
+# full proxies configuration info can be found here:
+# https://github.com/D00Movenok/BounceBack/wiki/2.-Proxies
 proxies:
   - name: example http proxy
     type: http
-    listen: 0.0.0.0:5001
-    target: http://127.0.0.1:5002
+    listen: 0.0.0.0:80
+    target: http://127.0.0.1:8080
     timeout: 10s
     # tls:
     #   cert: testdata/tls/cert.pem
@@ -187,3 +191,61 @@ proxies:
       # - example_not_time_filter
       - default_regexp_filter
       # - example_malleable_filter
+
+  - name: example dns proxy
+    type: dns
+    listen: 0.0.0.0:53
+    target: 127.0.0.1:50053
+    timeout: 10s
+    # tls:
+    #   cert: testdata/tls/cert.pem
+    #   key: testdata/tls/key.pem
+    filter_settings:
+      action: proxy
+      url: 1.1.1.1:53
+      noreject_threshold: 5
+      reject_threshold: 5
+    filters:
+      - default_ip_banlist
+      # - default_ip_allowlist
+      - default_geo_filter
+      - default_lookup_filter
+      # - example_not_time_filter
+      - default_regexp_filter
+
+  - name: example tcp proxy
+    type: tcp
+    listen: 0.0.0.0:4443
+    target: tcp://127.0.0.1:4444
+    timeout: 10s
+    # tls:
+    #   cert: testdata/tls/cert.pem
+    #   key: testdata/tls/key.pem
+    filter_settings:
+      action: drop
+      noreject_threshold: 5
+      reject_threshold: 5
+    filters:
+      - default_ip_banlist
+      # - default_ip_allowlist
+      - default_geo_filter
+      - default_lookup_filter
+      # - example_not_time_filter
+      - default_regexp_filter
+
+  - name: example udp proxy
+    type: udp
+    listen: 0.0.0.0:4445
+    target: 127.0.0.1:4446
+    timeout: 10s
+    filter_settings:
+      action: none
+      noreject_threshold: 5
+      reject_threshold: 5
+    filters:
+      - default_ip_banlist
+      # - default_ip_allowlist
+      - default_geo_filter
+      - default_lookup_filter
+      # - example_not_time_filter
+      - default_regexp_filter

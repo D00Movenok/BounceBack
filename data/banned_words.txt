@@ -19,6 +19,10 @@
 (?i)lynx
 (?i)slackbot-linkexpanding
 
+# Scanners
+(?i)zgrab
+(?i)nmap
+
 # Generic bad words
 (?i)security
 (?i)scanning

@@ -29,7 +29,7 @@ func NewFilterSet(
 	for _, fc := range cfg {
 		tokens := strings.Split(fc.Type, "::")
 		if len(tokens) == 0 {
-			return nil, fmt.Errorf("invalid filter: %s", fc.Type)
+			return nil, ErrEmptyFilterType
 		}
 
 		var (
@@ -41,16 +41,16 @@ func NewFilterSet(
 		if newFilter, ok := GetFilterBase()[lastToken]; ok {
 			if filter, err = newFilter(db, fs, fc); err != nil {
 				return nil, fmt.Errorf(
-					"can't create base filter for %s: %w",
+					"can't create base filter for \"%s\": %w",
 					fc.Name,
 					err,
 				)
 			}
 		} else {
-			return nil, fmt.Errorf(
-				"invalid filter %s: last token invalid",
-				fc.Type,
-			)
+			return nil, &UnknownBaseFilterError{
+				filter: fc.Name,
+				token:  lastToken,
+			}
 		}
 
 		// iterate tokens without last
@@ -59,11 +59,10 @@ func NewFilterSet(
 			if wrapperCreator, ok := GetFilterWrappers()[wrapperName]; ok {
 				filter = wrapperCreator(filter, fc)
 			} else {
-				return nil, fmt.Errorf(
-					"unexpected token %s for %s",
-					wrapperName,
-					fc.Name,
-				)
+				return nil, &UnknownBaseFilterError{
+					filter: fc.Name,
+					token:  wrapperName,
+				}
 			}
 		}
 

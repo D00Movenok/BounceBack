@@ -1,14 +1,11 @@
 package wrapper
 
 import (
-	"errors"
 	"net/http"
 	"net/netip"
 	"net/url"
-)
 
-var (
-	ErrNotSupported = errors.New("not supported")
+	"github.com/miekg/dns"
 )
 
 type Entity interface {
@@ -21,4 +18,7 @@ type Entity interface {
 	GetHeaders() (map[string][]string, error)
 	GetURL() (*url.URL, error)
 	GetMethod() (string, error)
+
+	// DNS
+	GetQuestions() ([]dns.Question, error)
 }
