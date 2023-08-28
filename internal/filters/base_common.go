@@ -94,6 +94,28 @@ func NewIPFilter(
 		}
 	}
 
+	// sort and remove equal elements for ipBanlist
+	slices.SortFunc(filter.ipBanlist, func(e1 netip.Addr, e2 netip.Addr) int {
+		return e1.Compare(e2)
+	})
+	filter.ipBanlist = slices.Compact(filter.ipBanlist)
+
+	// sort and remove equal elements for subnetBanlist
+	// TODO: update with compare func when it will be added
+	// https://github.com/golang/go/issues/61642
+	slices.SortFunc(
+		filter.subnetBanlist,
+		func(e1 netip.Prefix, e2 netip.Prefix) int {
+			return e1.Masked().Addr().Compare(e2.Masked().Addr())
+		},
+	)
+	filter.subnetBanlist = slices.CompactFunc(
+		filter.subnetBanlist,
+		func(e1 netip.Prefix, e2 netip.Prefix) bool {
+			return e1.Overlaps(e2)
+		},
+	)
+
 	return filter, nil
 }
 
@@ -301,18 +323,38 @@ func (f *IPFilter) Apply(
 	logger zerolog.Logger,
 ) (bool, error) {
 	ip := e.GetIP()
-	for _, i := range f.subnetBanlist {
-		if i.Contains(ip) {
-			logger.Debug().Stringer("match", i).Msg("Subnet match")
-			return true, nil
-		}
+
+	// search ip in subnetBanlist
+	// TODO: use Compare func when
+	// https://github.com/golang/go/issues/61642
+	i, found := slices.BinarySearchFunc(
+		f.subnetBanlist,
+		ip,
+		func(e1 netip.Prefix, e2 netip.Addr) int {
+			if e1.Contains(e2) {
+				return 0
+			}
+			return e1.Masked().Addr().Compare(e2)
+		},
+	)
+	if found {
+		logger.Debug().Stringer("match", f.subnetBanlist[i]).Msg("Subnet match")
+		return true, nil
 	}
-	for _, i := range f.ipBanlist {
-		if i.Compare(ip) == 0 {
-			logger.Debug().Stringer("match", i).Msg("IP match")
-			return true, nil
-		}
+
+	// search ip in ipBanlist
+	i, found = slices.BinarySearchFunc(
+		f.ipBanlist,
+		ip,
+		func(e1 netip.Addr, e2 netip.Addr) int {
+			return e1.Compare(e2)
+		},
+	)
+	if found {
+		logger.Debug().Stringer("match", f.ipBanlist[i]).Msg("IP match")
+		return true, nil
 	}
+
 	return false, nil
 }
 
