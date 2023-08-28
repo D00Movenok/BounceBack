@@ -118,7 +118,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -137,7 +137,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -156,7 +156,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_1337.txt",
+						"list": "../../test/testdata/words_lists/banlist_1337.txt",
 					},
 				},
 			},
@@ -175,7 +175,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/broken_regexp.txt",
+						"list": "../../test/testdata/words_lists/broken_regexp.txt",
 					},
 				},
 			},
@@ -194,7 +194,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -267,7 +267,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/allowlist_1.txt",
+						"list": "../../test/testdata/ip_lists/allowlist_1.txt",
 					},
 				},
 			},
@@ -285,7 +285,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/allowlist_1.txt",
+						"list": "../../test/testdata/ip_lists/allowlist_1.txt",
 					},
 				},
 			},
@@ -303,7 +303,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/allowlist_1.txt",
+						"list": "../../test/testdata/ip_lists/allowlist_1.txt",
 					},
 				},
 			},
@@ -321,7 +321,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/allowlist_1.txt",
+						"list": "../../test/testdata/ip_lists/allowlist_1.txt",
 					},
 				},
 			},
@@ -339,7 +339,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/allowlist_1.txt",
+						"list": "../../test/testdata/ip_lists/allowlist_1.txt",
 					},
 				},
 			},
@@ -357,7 +357,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/allowlist_1.txt",
+						"list": "../../test/testdata/ip_lists/allowlist_1.txt",
 					},
 				},
 			},
@@ -391,7 +391,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/broken_ip_v4.txt",
+						"list": "../../test/testdata/ip_lists/broken_ip_v4.txt",
 					},
 				},
 			},
@@ -409,7 +409,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/broken_ip_v6.txt",
+						"list": "../../test/testdata/ip_lists/broken_ip_v6.txt",
 					},
 				},
 			},
@@ -427,7 +427,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/broken_subnet_v4.txt",
+						"list": "../../test/testdata/ip_lists/broken_subnet_v4.txt",
 					},
 				},
 			},
@@ -445,7 +445,7 @@ func TestBase_IPFilter(t *testing.T) {
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
-						"list": "../../testdata/ip_lists/broken_subnet_v6.txt",
+						"list": "../../test/testdata/ip_lists/broken_subnet_v6.txt",
 					},
 				},
 			},
@@ -858,7 +858,7 @@ func TestBase_GeoFilter(t *testing.T) {
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_geo_true_array.txt", //nolint: lll
+						"list": "../../test/testdata/words_lists/banlist_geo_true_array.txt",
 						"geolocations": []map[string][]string{
 							{
 								"country": []string{"some false regexp"},
@@ -881,7 +881,7 @@ func TestBase_GeoFilter(t *testing.T) {
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_geo_true_string.txt", //nolint: lll
+						"list": "../../test/testdata/words_lists/banlist_geo_true_string.txt",
 						"geolocations": []map[string][]string{
 							{
 								"country": []string{"some false regexp"},
@@ -950,7 +950,7 @@ func TestBase_GeoFilter(t *testing.T) {
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_geo_false.txt", //nolint: lll
+						"list": "../../test/testdata/words_lists/banlist_geo_false.txt",
 						"geolocations": []map[string][]string{
 							{
 								"country": []string{"some false regexp"},
@@ -1020,7 +1020,7 @@ func TestBase_GeoFilter(t *testing.T) {
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/banlist_1337.txt",
+						"list": "../../test/testdata/words_lists/banlist_1337.txt",
 						"geolocations": []map[string][]string{
 							{
 								"organisation": []string{"(?i)google"},
@@ -1043,7 +1043,7 @@ func TestBase_GeoFilter(t *testing.T) {
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
-						"list": "../../testdata/words_lists/broken_regexp.txt",
+						"list": "../../test/testdata/words_lists/broken_regexp.txt",
 						"geolocations": []map[string][]string{
 							{
 								"organisation": []string{"(?i)google"},
@@ -1131,7 +1131,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1150,7 +1150,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1169,7 +1169,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/banlist_1337.txt",
+						"list": "../../test/testdata/words_lists/banlist_1337.txt",
 					},
 				},
 			},
@@ -1188,7 +1188,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/broken_regexp.txt",
+						"list": "../../test/testdata/words_lists/broken_regexp.txt",
 					},
 				},
 			},
@@ -1207,7 +1207,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1",
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1226,7 +1226,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:553",
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},
@@ -1245,7 +1245,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 					Type: "reverse_lookup",
 					Params: map[string]any{
 						"dns":  "1.1.1.1:53",
-						"list": "../../testdata/words_lists/banlist_regexp.txt",
+						"list": "../../test/testdata/words_lists/banlist_regexp.txt",
 					},
 				},
 			},

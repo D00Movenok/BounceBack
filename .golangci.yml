@@ -284,3 +284,6 @@ issues:
         - govet
         - gocognit
         - dupl
+    - source: "test/testdata"
+      linters:
+        - lll

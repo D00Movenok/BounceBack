@@ -80,7 +80,7 @@ func NewIPFilter(
 	for s.Scan() {
 		line := s.Text()
 		line, _, _ = strings.Cut(line, "#") // remove comment
-		line, _, _ = strings.Cut(line, " ") // remove space after
+		line = strings.TrimSpace(line)      // trim spaces
 		isSubnet := strings.Contains(line, "/")
 		if isSubnet {
 			subnet, err = netip.ParsePrefix(line)
