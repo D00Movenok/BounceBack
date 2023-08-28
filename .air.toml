@@ -1,5 +1,5 @@
 root = "."
-testdata_dir = "testdata"
+testdata_dir = "test/testdata"
 tmp_dir = "tmp"
 
 [build]
@@ -7,7 +7,7 @@ tmp_dir = "tmp"
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main cmd/bounceback/main.go"
   delay = 1000
-  exclude_dir = ["tmp", "dist", "testdata"]
+  exclude_dir = ["tmp", "dist", "test"]
   exclude_file = []
   exclude_regex = ["_test\\.go"]
   exclude_unchanged = false

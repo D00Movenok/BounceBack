@@ -176,8 +176,8 @@ proxies:
     target: http://127.0.0.1:8080
     timeout: 10s
     # tls:
-    #   cert: testdata/tls/cert.pem
-    #   key: testdata/tls/key.pem
+    #   cert: test/testdata/tls/cert.pem
+    #   key: test/testdata/tls/key.pem
     filter_settings:
       action: redirect
       url: https://www.youtube.com/watch?v=dQw4w9WgXcQ
@@ -198,8 +198,8 @@ proxies:
     target: 127.0.0.1:50053
     timeout: 10s
     # tls:
-    #   cert: testdata/tls/cert.pem
-    #   key: testdata/tls/key.pem
+    #   cert: test/testdata/tls/cert.pem
+    #   key: test/testdata/tls/key.pem
     filter_settings:
       action: proxy
       url: 1.1.1.1:53
@@ -219,8 +219,8 @@ proxies:
     target: tcp://127.0.0.1:4444
     timeout: 10s
     # tls:
-    #   cert: testdata/tls/cert.pem
-    #   key: testdata/tls/key.pem
+    #   cert: test/testdata/tls/cert.pem
+    #   key: test/testdata/tls/key.pem
     filter_settings:
       action: drop
       noreject_threshold: 5
