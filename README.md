@@ -15,6 +15,8 @@ BounceBack is a powerful, highly customizable and configurable reverse proxy wit
 
 The tool is distributed with preconfigured lists of blocked words, blocked and allowed IP addresses.
 
+For more information on tool usage, you may visit [project's wiki](https://github.com/D00Movenok/BounceBack/wiki).
+
 ## Features
 
 * Highly configurable and customizable filters pipeline with boolean-based concatenation of filters will be able to hide your infrastructure from the most keen blue eyes.
