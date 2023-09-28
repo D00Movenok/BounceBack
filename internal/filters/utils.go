@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// parses regexp list (one regexp per line) removing content.
 func getRegexpList(path string) ([]*regexp.Regexp, error) {
 	var (
 		re *regexp.Regexp

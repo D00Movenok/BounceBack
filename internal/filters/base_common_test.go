@@ -211,6 +211,7 @@ func TestBase_RegexpFilter(t *testing.T) {
 				nil,
 				filters.FilterSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
@@ -462,6 +463,7 @@ func TestBase_IPFilter(t *testing.T) {
 				nil,
 				filters.FilterSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
@@ -762,6 +764,7 @@ func TestBase_TimeFilter(t *testing.T) {
 				nil,
 				filters.FilterSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
@@ -1067,6 +1070,7 @@ func TestBase_GeoFilter(t *testing.T) {
 				db,
 				filters.FilterSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
@@ -1264,6 +1268,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				db,
 				filters.FilterSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,

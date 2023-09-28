@@ -15,6 +15,7 @@ func NewCompositeAndFilter(
 	_ *database.DB,
 	fs FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var params CompositeAndFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
@@ -42,6 +43,7 @@ func NewCompositeOrFilter(
 	_ *database.DB,
 	fs FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var params CompositeOrFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)
@@ -69,6 +71,7 @@ func NewCompositeNotFilter(
 	_ *database.DB,
 	fs FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var params CompositeNotFilterParams
 	err := mapstructure.Decode(cfg.Params, &params)

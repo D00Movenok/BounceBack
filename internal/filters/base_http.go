@@ -24,6 +24,7 @@ func NewMalleableFilter(
 	_ *database.DB,
 	_ FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var params MallebaleFilterParams
 

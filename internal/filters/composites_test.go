@@ -197,7 +197,12 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 				fs.Filters[k] = v
 			}
 
-			filter, err := filters.NewCompositeAndFilter(nil, fs, tt.args.cfg)
+			filter, err := filters.NewCompositeAndFilter(
+				nil,
+				fs,
+				tt.args.cfg,
+				common.Globals{},
+			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
@@ -395,7 +400,11 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 				fs.Filters[k] = v
 			}
 
-			filter, err := filters.NewCompositeOrFilter(nil, fs, tt.args.cfg)
+			filter, err := filters.NewCompositeOrFilter(nil,
+				fs,
+				tt.args.cfg,
+				common.Globals{},
+			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
@@ -578,7 +587,11 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 				fs.Filters[k] = v
 			}
 
-			filter, err := filters.NewCompositeNotFilter(nil, fs, tt.args.cfg)
+			filter, err := filters.NewCompositeNotFilter(nil,
+				fs,
+				tt.args.cfg,
+				common.Globals{},
+			)
 			require.Equalf(
 				t,
 				tt.want.createErr,

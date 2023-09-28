@@ -18,6 +18,7 @@ type FilterBaseCreator func(
 	db *database.DB,
 	fs FilterSet,
 	cfg common.FilterConfig,
+	globals common.Globals,
 ) (Filter, error)
 
 type FilterWrapperCreator func(

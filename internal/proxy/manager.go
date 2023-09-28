@@ -18,7 +18,7 @@ import (
 )
 
 func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
-	fs, err := filters.NewFilterSet(db, cfg.Filters)
+	fs, err := filters.NewFilterSet(db, cfg.Filters, cfg.Globals)
 	if err != nil {
 		return nil, fmt.Errorf("can't create filters: %w", err)
 	}
@@ -44,6 +44,7 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 				err,
 			)
 		}
+		proxies[i].GetLogger().Debug().Msg("Created new proxy")
 	}
 
 	m := &Manager{proxies}

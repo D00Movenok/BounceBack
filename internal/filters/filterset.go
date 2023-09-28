@@ -23,6 +23,7 @@ func (fs *FilterSet) Get(name string) (Filter, bool) {
 func NewFilterSet(
 	db *database.DB,
 	cfg []common.FilterConfig,
+	globals common.Globals,
 ) (*FilterSet, error) {
 	fs := FilterSet{Filters: map[string]Filter{}}
 
@@ -39,7 +40,7 @@ func NewFilterSet(
 
 		lastToken := tokens[len(tokens)-1]
 		if newFilter, ok := GetFilterBase()[lastToken]; ok {
-			if filter, err = newFilter(db, fs, fc); err != nil {
+			if filter, err = newFilter(db, fs, fc, globals); err != nil {
 				return nil, fmt.Errorf(
 					"can't create base filter for \"%s\": %w",
 					fc.Name,

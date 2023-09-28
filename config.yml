@@ -23,6 +23,7 @@ filters:
   # Now supported IP lookup services. How to check IP info:
   # * ip-api.com: curl -s 'http://ip-api.com/json/TARGET-IP'
   # * ipapi.co: curl -s 'https://ipapi.co/TARGET-IP/json/'
+  # May be used with api keys (or with free plan), see "globals" config section.
   # PARAMS:
   # * list - path to file with regexps (regexp re2), may be empty.
   # * geolocations - ARRAY of geolocations to match. All fields are re2
@@ -166,6 +167,13 @@ filters:
     type: not
     params:
       filter: default_ip_allowlist
+
+# full globals configuration info can be found here:
+# https://github.com/D00Movenok/BounceBack/wiki/3.-Globals
+globals:
+  # API keys that will be used to fetch geo info with "geo" filters.
+  ip-apicom_key: "" # optional
+  ipapico_key: "" # optional
 
 # full proxies configuration info can be found here:
 # https://github.com/D00Movenok/BounceBack/wiki/2.-Proxies

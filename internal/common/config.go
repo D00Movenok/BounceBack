@@ -39,7 +39,13 @@ type ProxyConfig struct {
 	Filters        []string       `mapstructure:"filters"`
 }
 
+type Globals struct {
+	IPApiComKey string `mapstructure:"ip-apicom_key"`
+	IPApiCoKey  string `mapstructure:"ipapico_key"`
+}
+
 type Config struct {
 	Filters []FilterConfig `mapstructure:"filters"`
 	Proxies []ProxyConfig  `mapstructure:"proxies"`
+	Globals Globals        `mapstructure:"globals"`
 }

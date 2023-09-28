@@ -31,6 +31,7 @@ func NewRegexpFilter(
 	_ *database.DB,
 	_ FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var params RegexpParams
 
@@ -55,6 +56,7 @@ func NewIPFilter(
 	_ *database.DB,
 	_ FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var (
 		params IPFilterParams
@@ -123,6 +125,7 @@ func NewTimeFilter(
 	_ *database.DB,
 	_ FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var params TimeParams
 	err := mapstructure.Decode(cfg.Params, &params)
@@ -182,6 +185,7 @@ func NewGeolocationFilter(
 	db *database.DB,
 	_ FilterSet,
 	cfg common.FilterConfig,
+	gloals common.Globals,
 ) (Filter, error) {
 	var params GeoParams
 	err := mapstructure.Decode(cfg.Params, &params)
@@ -189,14 +193,27 @@ func NewGeolocationFilter(
 		return nil, fmt.Errorf("can't decode params: %w", err)
 	}
 
+	var ipapicoClient ipapico.Client
+	if gloals.IPApiCoKey != "" {
+		ipapicoClient = ipapico.NewClientWithAPIKey(gloals.IPApiCoKey)
+	} else {
+		ipapicoClient = ipapico.NewClient()
+	}
+
+	var ipapicomClient ipapicom.Client
+	if gloals.IPApiCoKey != "" {
+		ipapicomClient = ipapicom.NewClientWithAPIKey(gloals.IPApiCoKey)
+	} else {
+		ipapicomClient = ipapicom.NewClient()
+	}
+
 	filter := &GeoFilter{
 		db:         db,
 		path:       params.Path,
 		geo:        make([]*GeoRegexp, 0, len(params.Geolocations)),
 		apicounter: atomic.NewInt32(0),
-		// TODO: add clients with api keys
-		ipapico:  ipapico.NewClient(),
-		ipapicom: ipapicom.NewClient(),
+		ipapico:    ipapicoClient,
+		ipapicom:   ipapicomClient,
 	}
 
 	if params.Path != "" {
@@ -248,6 +265,7 @@ func NewReverseLookupFilter(
 	db *database.DB,
 	_ FilterSet,
 	cfg common.FilterConfig,
+	_ common.Globals,
 ) (Filter, error) {
 	var (
 		params ReverseLookupParams
