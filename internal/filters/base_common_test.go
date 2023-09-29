@@ -100,9 +100,10 @@ func TestBase_RegexpFilter(t *testing.T) {
 		cfg       common.FilterConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -123,9 +124,10 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -142,9 +144,10 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -161,9 +164,10 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -180,9 +184,10 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -199,9 +204,10 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  true,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   true,
 			},
 		},
 	}
@@ -224,6 +230,15 @@ func TestBase_RegexpFilter(t *testing.T) {
 			if !tt.want.createErr {
 				e := new(MockEntity)
 				e.On("GetRaw").Return(tt.args.raw, tt.args.getRawErr)
+
+				err = filter.Prepare(e, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
 
 				res, err := filter.Apply(e, log.Logger)
 				require.Equalf(
@@ -251,9 +266,10 @@ func TestBase_IPFilter(t *testing.T) {
 		cfg common.FilterConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -273,9 +289,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -291,9 +308,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -309,9 +327,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -327,9 +346,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -345,9 +365,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -363,9 +384,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -379,9 +401,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -397,9 +420,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -415,9 +439,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -433,9 +458,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -451,9 +477,10 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
@@ -476,6 +503,15 @@ func TestBase_IPFilter(t *testing.T) {
 			if !tt.want.createErr {
 				e := new(MockEntity)
 				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
+
+				err = filter.Prepare(e, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
 
 				res, err := filter.Apply(e, log.Logger)
 				require.Equalf(
@@ -503,9 +539,10 @@ func TestBase_TimeFilter(t *testing.T) {
 		cfg common.FilterConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -526,9 +563,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -545,9 +583,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -566,9 +605,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -589,9 +629,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -608,9 +649,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -627,9 +669,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -648,9 +691,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -669,9 +713,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -690,9 +735,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -711,9 +757,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -732,9 +779,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -752,9 +800,10 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
@@ -775,6 +824,15 @@ func TestBase_TimeFilter(t *testing.T) {
 			)
 
 			if !tt.want.createErr {
+				err = filter.Prepare(nil, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
 				res, err := filter.Apply(nil, log.Logger)
 				require.Equalf(t,
 					tt.want.applyErr,
@@ -798,9 +856,10 @@ func TestBase_GeoFilter(t *testing.T) {
 		cfg common.FilterConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -825,9 +884,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -848,9 +908,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -871,9 +932,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -894,9 +956,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -917,9 +980,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -940,9 +1004,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -963,9 +1028,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -987,9 +1053,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1010,9 +1077,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1033,9 +1101,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1056,9 +1125,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
@@ -1085,6 +1155,15 @@ func TestBase_GeoFilter(t *testing.T) {
 				for i := 0; i < geolocationInfoCount; i++ {
 					e := new(MockEntity)
 					e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
+
+					err = filter.Prepare(e, log.Logger)
+					require.Equalf(
+						t,
+						tt.want.prepareErr,
+						err != nil,
+						"Prepare() error mismatch: %s",
+						err,
+					)
 
 					res, err := filter.Apply(e, log.Logger)
 					require.Equalf(
@@ -1117,9 +1196,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 		cfg common.FilterConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -1140,9 +1220,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1159,9 +1240,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1178,9 +1260,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1197,9 +1280,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1216,9 +1300,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
@@ -1235,9 +1320,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  true,
+				res:        false,
+				createErr:  false,
+				prepareErr: true,
+				applyErr:   true,
 			},
 		},
 		{
@@ -1254,9 +1340,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
@@ -1281,6 +1368,15 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 			if !tt.want.createErr {
 				e := new(MockEntity)
 				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
+
+				err = filter.Prepare(e, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
 
 				res, err := filter.Apply(e, log.Logger)
 				require.Equalf(

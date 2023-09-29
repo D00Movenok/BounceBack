@@ -21,6 +21,14 @@ type MockFilter struct {
 	called bool
 }
 
+func (m *MockFilter) Prepare(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	params := m.Called(e, logger)
+	return params.Error(0) //nolint: wrapcheck // mock
+}
+
 func (m *MockFilter) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
@@ -189,6 +197,12 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 				Filters: map[string]filters.Filter{},
 			}
 			for k, v := range tt.args.fs {
+				if !tt.want.createErr {
+					v.
+						On("Prepare", mock.Anything, mock.Anything).
+						Return(nil)
+				}
+
 				if v.called {
 					v.
 						On("Apply", mock.Anything, mock.Anything).
@@ -211,6 +225,14 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 				err,
 			)
 			if !tt.want.createErr {
+				err := filter.Prepare(nil, log.Logger)
+				require.NoError(
+					t,
+					err,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
 				res, err := filter.Apply(nil, log.Logger)
 				require.Equalf(
 					t,
@@ -392,6 +414,12 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 				Filters: map[string]filters.Filter{},
 			}
 			for k, v := range tt.args.fs {
+				if !tt.want.createErr {
+					v.
+						On("Prepare", mock.Anything, mock.Anything).
+						Return(nil)
+				}
+
 				if v.called {
 					v.
 						On("Apply", mock.Anything, mock.Anything).
@@ -413,6 +441,14 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 				err,
 			)
 			if !tt.want.createErr {
+				err := filter.Prepare(nil, log.Logger)
+				require.NoError(
+					t,
+					err,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
 				res, err := filter.Apply(nil, log.Logger)
 				require.Equalf(
 					t,
@@ -579,6 +615,12 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 				Filters: map[string]filters.Filter{},
 			}
 			for k, v := range tt.args.fs {
+				if !tt.want.createErr {
+					v.
+						On("Prepare", mock.Anything, mock.Anything).
+						Return(nil)
+				}
+
 				if v.called {
 					v.
 						On("Apply", mock.Anything, mock.Anything).
@@ -600,6 +642,14 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 				err,
 			)
 			if !tt.want.createErr {
+				err := filter.Prepare(nil, log.Logger)
+				require.NoError(
+					t,
+					err,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
 				res, err := filter.Apply(nil, log.Logger)
 				require.Equalf(
 					t,

@@ -305,6 +305,13 @@ type RegexpFilter struct {
 	list []*regexp.Regexp
 }
 
+func (f *RegexpFilter) Prepare(
+	_ wrapper.Entity,
+	_ zerolog.Logger,
+) error {
+	return nil
+}
+
 func (f RegexpFilter) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
@@ -334,6 +341,13 @@ type IPFilter struct {
 	path          string
 	subnetBanlist []netip.Prefix
 	ipBanlist     []netip.Addr
+}
+
+func (f *IPFilter) Prepare(
+	_ wrapper.Entity,
+	_ zerolog.Logger,
+) error {
+	return nil
 }
 
 func (f *IPFilter) Apply(
@@ -392,6 +406,13 @@ type TimeFilter struct {
 	to       time.Time
 	loc      *time.Location
 	weekdays []time.Weekday
+}
+
+func (f *TimeFilter) Prepare(
+	_ wrapper.Entity,
+	_ zerolog.Logger,
+) error {
+	return nil
 }
 
 func (f *TimeFilter) Apply(
@@ -485,10 +506,45 @@ type GeoFilter struct {
 	ipapicom   ipapicom.Client
 }
 
-func (f *GeoFilter) getGeoInfoByIP(
-	ip string,
+func (f *GeoFilter) Prepare(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	_, err := f.getGeoInfoByEntity(e, logger)
+	if err != nil {
+		return fmt.Errorf("can't prepare geolocation info: %w", err)
+	}
+	return nil
+}
+
+func (f *GeoFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
+	geo, err := f.getGeoInfoByEntity(e, logger)
+	if err != nil {
+		return false, fmt.Errorf("can't get geolocation info: %w", err)
+	}
+
+	if f.filterByRegexp(geo, logger) {
+		return true, nil
+	}
+	for _, gr := range f.geo {
+		m := f.filterByGeoRegexp(geo, gr)
+		if m {
+			logger.Debug().Stringer("match", gr).Msg("Geo match")
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *GeoFilter) getGeoInfoByEntity(
+	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (*database.Geolocation, error) {
+	ip := e.GetIP().String()
+
 	geo, err := f.db.GetGeolocation(ip)
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, fmt.Errorf("can't get cached geolocation: %w", err)
@@ -560,6 +616,10 @@ func (f *GeoFilter) filterByRegexp(
 	geo *database.Geolocation,
 	logger zerolog.Logger,
 ) bool {
+	if len(f.list) == 0 {
+		return false
+	}
+
 	// iterate fields and match "list" regexps on them
 	gs := reflect.ValueOf(geo).Elem()
 	for i := 0; i < gs.NumField(); i++ {
@@ -633,28 +693,6 @@ func (f *GeoFilter) filterByGeoRegexp(
 	return found
 }
 
-func (f *GeoFilter) Apply(
-	e wrapper.Entity,
-	logger zerolog.Logger,
-) (bool, error) {
-	ip := e.GetIP().String()
-	geo, err := f.getGeoInfoByIP(ip, logger)
-	if err != nil {
-		return false, fmt.Errorf("can't get geolocation info: %w", err)
-	}
-	if len(f.list) != 0 && f.filterByRegexp(geo, logger) {
-		return true, nil
-	}
-	for _, gr := range f.geo {
-		m := f.filterByGeoRegexp(geo, gr)
-		if m {
-			logger.Debug().Stringer("match", gr).Msg("Geo match")
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (f *GeoFilter) String() string {
 	return fmt.Sprintf(
 		"Geo(path=%s, geolocations=%s)",
@@ -675,10 +713,45 @@ type ReverseLookupFilter struct {
 	list []*regexp.Regexp
 }
 
-func (f *ReverseLookupFilter) getDomainByIP(
-	ip string,
+func (f *ReverseLookupFilter) Prepare(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	_, err := f.getDomainByEntity(e, logger)
+	if err != nil {
+		return fmt.Errorf("can't prepare reverse lookup info: %w", err)
+	}
+	return nil
+}
+
+func (f *ReverseLookupFilter) Apply(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) (bool, error) {
+	ptr, err := f.getDomainByEntity(e, logger)
+	if err != nil {
+		return false, fmt.Errorf("can't get reverse lookup info: %w", err)
+	}
+
+	for _, d := range ptr.Domains {
+		for _, re := range f.list {
+			if re.MatchString(d) {
+				logger.Debug().
+					Stringer("match", re).
+					Msg("Reverse lookup regexp match")
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func (f *ReverseLookupFilter) getDomainByEntity(
+	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (*database.ReverseLookup, error) {
+	ip := e.GetIP().String()
+
 	rl, err := f.db.GetReverseLookup(ip)
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, fmt.Errorf("can't get cached reverse lookup: %w", err)
@@ -721,28 +794,6 @@ func (f *ReverseLookupFilter) getDomainByIP(
 	}
 
 	return rl, nil
-}
-
-func (f *ReverseLookupFilter) Apply(
-	e wrapper.Entity,
-	logger zerolog.Logger,
-) (bool, error) {
-	ip := e.GetIP()
-	ptr, err := f.getDomainByIP(ip.String(), logger)
-	if err != nil {
-		return false, fmt.Errorf("can't get reverse lookup info: %w", err)
-	}
-	for _, d := range ptr.Domains {
-		for _, re := range f.list {
-			if re.MatchString(d) {
-				logger.Debug().
-					Stringer("match", re).
-					Msg("Reverse lookup regexp match")
-				return true, nil
-			}
-		}
-	}
-	return false, nil
 }
 
 func (f *ReverseLookupFilter) String() string {

@@ -104,29 +104,21 @@ func (p *Proxy) GetLogger() *zerolog.Logger {
 func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 	ip := e.GetIP().String()
 
-	v, err := p.db.GetVerdict(ip)
-	if err != nil {
-		v = &database.Verdict{}
-		logger.Error().Err(err).Msg("Can't get cached verdict")
-	}
-	switch {
-	case p.Config.FilterSettings.NoRejectThreshold > 0 &&
-		v.Accepts >= p.Config.FilterSettings.NoRejectThreshold:
-	case p.Config.FilterSettings.RejectThreshold > 0 &&
-		v.Rejects >= p.Config.FilterSettings.RejectThreshold:
-		logger.Warn().Msg("Rejected permanently")
+	if p.isRejectedByThreshold(ip, logger) {
 		return false
-	default:
 	}
 
-	// TODO: run all requests (e.g. DNS PTR, GEO) concurrently
-	// before filtering for optimization.
+	mg := p.prepareFilters(e, logger)
+
 	// TODO: cache filters for equal entities for optimization.
-	var filtered bool
-	for _, f := range p.Config.Filters {
+	// TODO: add accept verdict.
+	for i, f := range p.Config.Filters {
+		mg[i].Lock()
+		defer mg[i].Unlock()
+
 		filterLogger := logger.With().Str("filter", f).Logger()
 		filter, _ := p.filters.Get(f)
-		filtered, err = filter.Apply(e, filterLogger)
+		filtered, err := filter.Apply(e, filterLogger)
 		if err != nil {
 			filterLogger.Error().Err(err).Msg("Filter error, skipping...")
 			continue
@@ -141,12 +133,55 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 		}
 	}
 
-	err = p.db.IncAccepts(ip)
+	err := p.db.IncAccepts(ip)
 	if err != nil {
 		logger.Error().Err(err).Msg("Can't increase accepts")
 	}
 
 	return true
+}
+
+// check NoRejectThreshold and RejectThreshold.
+// return true if rejected by RejectThreshold, otherwise false.
+func (p *Proxy) isRejectedByThreshold(ip string, logger zerolog.Logger) bool {
+	v, err := p.db.GetVerdict(ip)
+	if err != nil {
+		v = &database.Verdict{}
+		logger.Error().Err(err).Msg("Can't get cached verdict")
+	}
+	switch {
+	case p.Config.FilterSettings.NoRejectThreshold > 0 &&
+		v.Accepts >= p.Config.FilterSettings.NoRejectThreshold:
+	case p.Config.FilterSettings.RejectThreshold > 0 &&
+		v.Rejects >= p.Config.FilterSettings.RejectThreshold:
+		logger.Warn().Msg("Rejected permanently")
+		return true
+	default:
+	}
+
+	return false
+}
+
+// run all requests (e.g. DNS PTR, GEO) concurently for optimisation.
+func (p *Proxy) prepareFilters(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) []sync.Mutex {
+	mg := make([]sync.Mutex, len(p.Config.Filters))
+	for i, f := range p.Config.Filters {
+		go func(index int, ff string) {
+			mg[index].Lock()
+			defer mg[index].Unlock()
+
+			filterLogger := logger.With().Str("filter", ff).Logger()
+			filter, _ := p.filters.Get(ff)
+			err := filter.Prepare(e, filterLogger)
+			if err != nil {
+				filterLogger.Error().Err(err).Msg("Prepare error, skipping...")
+			}
+		}(i, f)
+	}
+	return mg
 }
 
 func (p *Proxy) String() string {

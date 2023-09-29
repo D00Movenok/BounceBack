@@ -72,6 +72,13 @@ type MallebaleFilter struct {
 	profile *malleable.Profile
 }
 
+func (f *MallebaleFilter) Prepare(
+	_ wrapper.Entity,
+	_ zerolog.Logger,
+) error {
+	return nil
+}
+
 func (f *MallebaleFilter) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,

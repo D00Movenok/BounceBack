@@ -6,7 +6,31 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/D00Movenok/BounceBack/internal/wrapper"
+	"github.com/rs/zerolog"
+	"golang.org/x/sync/errgroup"
 )
+
+func PrepareMany(
+	filters []Filter,
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	var eg errgroup.Group
+	for _, f := range filters {
+		func(ff Filter) {
+			eg.Go(func() error {
+				err := ff.Prepare(e, logger)
+				if err != nil {
+					return fmt.Errorf("can't prepare %s: %w", ff, err)
+				}
+				return nil
+			})
+		}(f)
+	}
+	return eg.Wait() //nolint: wrapcheck // wrapped above
+}
 
 // parses regexp list (one regexp per line) removing content.
 func getRegexpList(path string) ([]*regexp.Regexp, error) {

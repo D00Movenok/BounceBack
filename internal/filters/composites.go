@@ -100,6 +100,17 @@ type CompositeAndFilter struct {
 	filters []Filter
 }
 
+func (f CompositeAndFilter) Prepare(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	return PrepareMany(
+		f.filters,
+		e,
+		logger,
+	)
+}
+
 func (f CompositeAndFilter) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
@@ -132,11 +143,22 @@ type CompositeOrFilter struct {
 	filters []Filter
 }
 
-func (r CompositeOrFilter) Apply(
+func (f CompositeOrFilter) Prepare(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	err := PrepareMany(f.filters, e, logger)
+	if err != nil {
+		return fmt.Errorf("can't prepare filters: %w", err)
+	}
+	return nil
+}
+
+func (f CompositeOrFilter) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
-	for _, filter := range r.filters {
+	for _, filter := range f.filters {
 		res, err := filter.Apply(e, logger)
 		if err != nil {
 			return false, fmt.Errorf("error in filter \"%T\": %w", filter, err)
@@ -148,10 +170,10 @@ func (r CompositeOrFilter) Apply(
 	return false, nil
 }
 
-func (r CompositeOrFilter) String() string {
-	filterNames := make([]string, 0, len(r.filters))
-	for _, f := range r.filters {
-		filterNames = append(filterNames, f.String())
+func (f CompositeOrFilter) String() string {
+	filterNames := make([]string, 0, len(f.filters))
+	for _, filter := range f.filters {
+		filterNames = append(filterNames, filter.String())
 	}
 	return strings.Join(filterNames, " or ")
 }
@@ -162,6 +184,13 @@ type CompositeNotFilterParams struct {
 
 type CompositeNotFilter struct {
 	filter Filter
+}
+
+func (f CompositeNotFilter) Prepare(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	return f.filter.Prepare(e, logger) //nolint: wrapcheck // gets from config
 }
 
 func (f CompositeNotFilter) Apply(

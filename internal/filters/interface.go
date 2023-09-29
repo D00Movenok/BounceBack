@@ -10,6 +10,7 @@ import (
 )
 
 type Filter interface {
+	Prepare(wrapper.Entity, zerolog.Logger) error
 	Apply(wrapper.Entity, zerolog.Logger) (bool, error)
 	fmt.Stringer
 }
