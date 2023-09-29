@@ -3,13 +3,18 @@ package common
 import "time"
 
 const (
-	ActionProxy    = "proxy"
-	ActionRedirect = "redirect"
-	ActionDrop     = "drop"
-	ActionNone     = "none"
+	RejectActionProxy    = "proxy"
+	RejectActionRedirect = "redirect"
+	RejectActionDrop     = "drop"
+	RejectActionNone     = "none"
 )
 
-type FilterConfig struct {
+const (
+	FilterActionAccept = "accept"
+	FilterActionReject = "reject"
+)
+
+type RuleConfig struct {
 	Name   string         `mapstructure:"name"`
 	Type   string         `mapstructure:"type"`
 	Params map[string]any `mapstructure:"params"`
@@ -20,23 +25,28 @@ type TLS struct {
 	Key  string `mapstructure:"key"`
 }
 
-type FilterSettings struct {
-	Action string `mapstructure:"action"`
-	URL    string `mapstructure:"url"`
+type RuleSettings struct {
+	RejectAction string `mapstructure:"reject_action"`
+	RejectURL    string `mapstructure:"reject_url"`
 
 	NoRejectThreshold uint `mapstructure:"noreject_threshold"`
 	RejectThreshold   uint `mapstructure:"reject_threshold"`
 }
 
+type Filter struct {
+	Rule   string `mapstructure:"rule"`
+	Action string `mapstructure:"action"`
+}
+
 type ProxyConfig struct {
-	Name           string         `mapstructure:"name"`
-	Type           string         `mapstructure:"type"`
-	ListenAddr     string         `mapstructure:"listen"`
-	TargetAddr     string         `mapstructure:"target"`
-	Timeout        time.Duration  `mapstructure:"timeout"`
-	TLS            *TLS           `mapstructure:"tls"`
-	FilterSettings FilterSettings `mapstructure:"filter_settings"`
-	Filters        []string       `mapstructure:"filters"`
+	Name         string        `mapstructure:"name"`
+	Type         string        `mapstructure:"type"`
+	ListenAddr   string        `mapstructure:"listen"`
+	TargetAddr   string        `mapstructure:"target"`
+	Timeout      time.Duration `mapstructure:"timeout"`
+	TLS          *TLS          `mapstructure:"tls"`
+	RuleSettings RuleSettings  `mapstructure:"filter_settings"`
+	Filters      []Filter      `mapstructure:"filters"`
 }
 
 type Globals struct {
@@ -45,7 +55,7 @@ type Globals struct {
 }
 
 type Config struct {
-	Filters []FilterConfig `mapstructure:"filters"`
-	Proxies []ProxyConfig  `mapstructure:"proxies"`
-	Globals Globals        `mapstructure:"globals"`
+	Rules   []RuleConfig  `mapstructure:"rules"`
+	Proxies []ProxyConfig `mapstructure:"proxies"`
+	Globals Globals       `mapstructure:"globals"`
 }

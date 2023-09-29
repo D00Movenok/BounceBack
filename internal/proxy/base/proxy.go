@@ -8,11 +8,11 @@ import (
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
-	"github.com/D00Movenok/BounceBack/internal/filters"
+	"github.com/D00Movenok/BounceBack/internal/rules"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 
 func NewBaseProxy(
 	cfg common.ProxyConfig,
-	fs *filters.FilterSet,
+	rs *rules.RuleSet,
 	db *database.DB,
 	actions []string,
 ) (*Proxy, error) {
@@ -29,18 +29,28 @@ func NewBaseProxy(
 		Str("proxy", cfg.Name).
 		Logger()
 
-	err := verifyAction(cfg.FilterSettings.Action, actions)
+	err := verifyAction(cfg.RuleSettings.RejectAction, actions)
 	if err != nil {
 		return nil, err
 	}
 
+	filterActions := []string{
+		common.FilterActionAccept,
+		common.FilterActionReject,
+	}
 	for _, f := range cfg.Filters {
-		_, ok := fs.Get(f)
+		_, ok := rs.Get(f.Rule)
 		if !ok {
 			return nil, fmt.Errorf(
-				"can't find filter \"%s\" for proxy \"%s\"",
+				"can't find rule \"%s\" for proxy \"%s\"",
 				f,
 				cfg.Name,
+			)
+		}
+		if !slices.Contains(filterActions, f.Action) {
+			return nil, fmt.Errorf(
+				"unknown filter action: %s",
+				f.Action,
 			)
 		}
 	}
@@ -59,8 +69,8 @@ func NewBaseProxy(
 		Closing: false,
 		Logger:  logger,
 
-		db:      db,
-		filters: fs,
+		db:    db,
+		rules: rs,
 	}
 
 	if cfg.TLS != nil {
@@ -87,8 +97,8 @@ type Proxy struct {
 	WG      sync.WaitGroup
 	Logger  zerolog.Logger
 
-	db      *database.DB
-	filters *filters.FilterSet
+	db    *database.DB
+	rules *rules.RuleSet
 }
 
 func (p *Proxy) GetLogger() *zerolog.Logger {
@@ -108,28 +118,35 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 		return false
 	}
 
-	mg := p.prepareFilters(e, logger)
+	mg := p.prepareRules(e, logger)
 
 	// TODO: cache filters for equal entities for optimization.
-	// TODO: add accept verdict.
 	for i, f := range p.Config.Filters {
 		mg[i].Lock()
 		defer mg[i].Unlock()
 
-		filterLogger := logger.With().Str("filter", f).Logger()
-		filter, _ := p.filters.Get(f)
-		filtered, err := filter.Apply(e, filterLogger)
+		ruleLogger := logger.With().Str("rule", f.Rule).Logger()
+		rule, _ := p.rules.Get(f.Rule)
+		fired, err := rule.Apply(e, ruleLogger)
 		if err != nil {
-			filterLogger.Error().Err(err).Msg("Filter error, skipping...")
+			ruleLogger.Error().Err(err).Msg("Rule error, skipping...")
 			continue
 		}
-		if filtered {
-			filterLogger.Warn().Msg("Filtered")
+
+		if !fired {
+			continue
+		}
+
+		if f.Action == common.FilterActionReject {
+			ruleLogger.Warn().Msg("Rejected")
 			err = p.db.IncRejects(ip)
 			if err != nil {
 				logger.Error().Err(err).Msg("Can't increase rejects")
 			}
 			return false
+		} else if f.Action == common.FilterActionAccept {
+			ruleLogger.Warn().Msg("Accepted")
+			break
 		}
 	}
 
@@ -150,10 +167,10 @@ func (p *Proxy) isRejectedByThreshold(ip string, logger zerolog.Logger) bool {
 		logger.Error().Err(err).Msg("Can't get cached verdict")
 	}
 	switch {
-	case p.Config.FilterSettings.NoRejectThreshold > 0 &&
-		v.Accepts >= p.Config.FilterSettings.NoRejectThreshold:
-	case p.Config.FilterSettings.RejectThreshold > 0 &&
-		v.Rejects >= p.Config.FilterSettings.RejectThreshold:
+	case p.Config.RuleSettings.NoRejectThreshold > 0 &&
+		v.Accepts >= p.Config.RuleSettings.NoRejectThreshold:
+	case p.Config.RuleSettings.RejectThreshold > 0 &&
+		v.Rejects >= p.Config.RuleSettings.RejectThreshold:
 		logger.Warn().Msg("Rejected permanently")
 		return true
 	default:
@@ -163,21 +180,21 @@ func (p *Proxy) isRejectedByThreshold(ip string, logger zerolog.Logger) bool {
 }
 
 // run all requests (e.g. DNS PTR, GEO) concurently for optimisation.
-func (p *Proxy) prepareFilters(
+func (p *Proxy) prepareRules(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) []sync.Mutex {
 	mg := make([]sync.Mutex, len(p.Config.Filters))
 	for i, f := range p.Config.Filters {
-		go func(index int, ff string) {
-			mg[index].Lock()
+		mg[i].Lock()
+		go func(index int, ff common.Filter) {
 			defer mg[index].Unlock()
 
-			filterLogger := logger.With().Str("filter", ff).Logger()
-			filter, _ := p.filters.Get(ff)
-			err := filter.Prepare(e, filterLogger)
+			ruleLogger := logger.With().Str("rule", ff.Rule).Logger()
+			rule, _ := p.rules.Get(ff.Rule)
+			err := rule.Prepare(e, ruleLogger)
 			if err != nil {
-				filterLogger.Error().Err(err).Msg("Prepare error, skipping...")
+				ruleLogger.Error().Err(err).Msg("Prepare error, skipping...")
 			}
 		}(i, f)
 	}

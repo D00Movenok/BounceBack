@@ -13,8 +13,8 @@ import (
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
-	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/base"
+	"github.com/D00Movenok/BounceBack/internal/rules"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 	"github.com/rs/zerolog"
 )
@@ -27,17 +27,17 @@ const (
 
 var (
 	AllowedActions = []string{
-		common.ActionDrop,
-		common.ActionNone,
+		common.RejectActionDrop,
+		common.RejectActionNone,
 	}
 )
 
 func NewProxy(
 	cfg common.ProxyConfig,
-	fs *filters.FilterSet,
+	rs *rules.RuleSet,
 	db *database.DB,
 ) (*Proxy, error) {
-	baseProxy, err := base.NewBaseProxy(cfg, fs, db, AllowedActions)
+	baseProxy, err := base.NewBaseProxy(cfg, rs, db, AllowedActions)
 	if err != nil {
 		return nil, fmt.Errorf("can't create base proxy: %w", err)
 	}
@@ -114,8 +114,8 @@ func (p *Proxy) processVerdict(
 	src net.Conn,
 	logger zerolog.Logger,
 ) bool {
-	switch p.Config.FilterSettings.Action {
-	case common.ActionDrop:
+	switch p.Config.RuleSettings.RejectAction {
+	case common.RejectActionDrop:
 		src.Close()
 		return true
 	default:

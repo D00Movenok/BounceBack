@@ -1,4 +1,4 @@
-package filters
+package rules
 
 import (
 	"bytes"
@@ -19,14 +19,14 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// TODO: add unit tests for malleable filter.
-func NewMalleableFilter(
+// TODO: add unit tests for malleable rule.
+func NewMalleableRule(
 	_ *database.DB,
-	_ FilterSet,
-	cfg common.FilterConfig,
+	_ RuleSet,
+	cfg common.RuleConfig,
 	_ common.Globals,
-) (Filter, error) {
-	var params MallebaleFilterParams
+) (Rule, error) {
+	var params MallebaleRuleParams
 
 	err := mapstructure.Decode(cfg.Params, &params)
 	if err != nil {
@@ -43,7 +43,7 @@ func NewMalleableFilter(
 		return nil, fmt.Errorf("can't parse profile: %w", err)
 	}
 
-	filter := &MallebaleFilter{
+	rule := &MallebaleRule{
 		path:    params.Profile,
 		profile: parsed,
 		exclude: make([]*regexp.Regexp, 0, len(params.Exclude)),
@@ -55,31 +55,31 @@ func NewMalleableFilter(
 		if err != nil {
 			return nil, fmt.Errorf("can't compile regexp: %w", err)
 		}
-		filter.exclude = append(filter.exclude, re)
+		rule.exclude = append(rule.exclude, re)
 	}
 
-	return filter, nil
+	return rule, nil
 }
 
-type MallebaleFilterParams struct {
+type MallebaleRuleParams struct {
 	Profile string   `mapstructure:"profile"`
 	Exclude []string `mapstructure:"exclude"`
 }
 
-type MallebaleFilter struct {
+type MallebaleRule struct {
 	path    string
 	exclude []*regexp.Regexp
 	profile *malleable.Profile
 }
 
-func (f *MallebaleFilter) Prepare(
+func (f *MallebaleRule) Prepare(
 	_ wrapper.Entity,
 	_ zerolog.Logger,
 ) error {
 	return nil
 }
 
-func (f *MallebaleFilter) Apply(
+func (f *MallebaleRule) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -125,7 +125,7 @@ func (f *MallebaleFilter) Apply(
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyUserAgentLists(
+func (f *MallebaleRule) verifyUserAgentLists(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -161,7 +161,7 @@ func (f *MallebaleFilter) verifyUserAgentLists(
 	return true, nil
 }
 
-func (f *MallebaleFilter) isExcluded(
+func (f *MallebaleRule) isExcluded(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -178,7 +178,7 @@ func (f *MallebaleFilter) isExcluded(
 	return false, nil
 }
 
-func (f *MallebaleFilter) verifyUserAgent(
+func (f *MallebaleRule) verifyUserAgent(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -196,7 +196,7 @@ func (f *MallebaleFilter) verifyUserAgent(
 	return true, nil
 }
 
-func (f *MallebaleFilter) findProfile(
+func (f *MallebaleRule) findProfile(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -277,7 +277,7 @@ func (f *MallebaleFilter) findProfile(
 	return false, nil
 }
 
-func (f *MallebaleFilter) verifyHTTPProfile(
+func (f *MallebaleRule) verifyHTTPProfile(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 	method string,
@@ -360,7 +360,7 @@ func (f *MallebaleFilter) verifyHTTPProfile(
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyMethod(
+func (f *MallebaleRule) verifyMethod(
 	e wrapper.Entity,
 	method string,
 	defaultMethod string,
@@ -378,7 +378,7 @@ func (f *MallebaleFilter) verifyMethod(
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyURI(
+func (f *MallebaleRule) verifyURI(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 	uris malleable.URIs,
@@ -414,7 +414,7 @@ func (f *MallebaleFilter) verifyURI(
 	return false, nil
 }
 
-func (f *MallebaleFilter) verifyParameters(
+func (f *MallebaleRule) verifyParameters(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 	parameters []malleable.Parameter,
@@ -441,7 +441,7 @@ func (f *MallebaleFilter) verifyParameters(
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyHeaders(
+func (f *MallebaleRule) verifyHeaders(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 	pheaders []malleable.Header,
@@ -477,7 +477,7 @@ func (f *MallebaleFilter) verifyHeaders(
 	return true, nil
 }
 
-func (f *MallebaleFilter) verifyBody(
+func (f *MallebaleRule) verifyBody(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 	transforms []malleable.Function,
@@ -489,7 +489,7 @@ func (f *MallebaleFilter) verifyBody(
 	return f.verifyDecoding(body, logger, transforms), nil
 }
 
-func (f *MallebaleFilter) verifyStagerURL(e wrapper.Entity) (bool, error) {
+func (f *MallebaleRule) verifyStagerURL(e wrapper.Entity) (bool, error) {
 	p, err := e.GetURL()
 	if err != nil {
 		return false, fmt.Errorf("can't get path: %w", err)
@@ -500,7 +500,7 @@ func (f *MallebaleFilter) verifyStagerURL(e wrapper.Entity) (bool, error) {
 	return cs == 92 || cs == 93, nil
 }
 
-func (f *MallebaleFilter) verifyDecoding(
+func (f *MallebaleRule) verifyDecoding(
 	data []byte,
 	logger zerolog.Logger,
 	transforms []malleable.Function,
@@ -554,7 +554,7 @@ func (f *MallebaleFilter) verifyDecoding(
 	return len(data) > 0
 }
 
-func (f *MallebaleFilter) String() string {
+func (f *MallebaleRule) String() string {
 	return fmt.Sprintf(
 		"Malleable(profile=%s, exclude=%s)",
 		f.path,

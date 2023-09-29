@@ -8,32 +8,32 @@ import (
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
-	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/dns"
 	"github.com/D00Movenok/BounceBack/internal/proxy/http"
 	"github.com/D00Movenok/BounceBack/internal/proxy/tcp"
 	"github.com/D00Movenok/BounceBack/internal/proxy/udp"
+	"github.com/D00Movenok/BounceBack/internal/rules"
 
 	"github.com/rs/zerolog/log"
 )
 
 func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
-	fs, err := filters.NewFilterSet(db, cfg.Filters, cfg.Globals)
+	rs, err := rules.NewRuleSet(db, cfg.Rules, cfg.Globals)
 	if err != nil {
-		return nil, fmt.Errorf("can't create filters: %w", err)
+		return nil, fmt.Errorf("can't create rules: %w", err)
 	}
 
 	proxies := make([]Proxy, len(cfg.Proxies))
 	for i, pc := range cfg.Proxies {
 		switch pc.Type {
 		case http.ProxyType:
-			proxies[i], err = http.NewProxy(pc, fs, db)
+			proxies[i], err = http.NewProxy(pc, rs, db)
 		case dns.ProxyType:
-			proxies[i], err = dns.NewProxy(pc, fs, db)
+			proxies[i], err = dns.NewProxy(pc, rs, db)
 		case tcp.ProxyType:
-			proxies[i], err = tcp.NewProxy(pc, fs, db)
+			proxies[i], err = tcp.NewProxy(pc, rs, db)
 		case udp.ProxyType:
-			proxies[i], err = udp.NewProxy(pc, fs, db)
+			proxies[i], err = udp.NewProxy(pc, rs, db)
 		default:
 			return nil, &InvalidProxyTypeError{t: pc.Type}
 		}

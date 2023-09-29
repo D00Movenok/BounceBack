@@ -1,7 +1,7 @@
-# full filters configuration info can be found here:
-# https://github.com/D00Movenok/BounceBack/wiki/1.-Filters
-filters:
-  # "ip" filter fires only when "list" contains INGRESS IP address.
+# full rules configuration info can be found here:
+# https://github.com/D00Movenok/BounceBack/wiki/1.-Rules
+rules:
+  # "ip" rule fires only when "list" contains INGRESS IP address.
   # May be combined with "not" wrapper for allowlist.
   # PARAMS:
   # * list - path to file with IP addresses or/and subnets.
@@ -16,7 +16,12 @@ filters:
     params:
       list: data/allowed_ips.txt
 
-  # "geo" filter fires only either when ANY geolocation lookup element matches
+  - name: default_ip_acceptlist
+    type: ip
+    params:
+      list: data/allowed_ips.txt
+
+  # "geo" rule fires only either when ANY geolocation lookup element matches
   # with ANY regexp from "list" OR when geolocation fully matches with
   # ANY "geolocations" array element.
   # May be combined with "not" wrapper for organisations allowlist.
@@ -39,7 +44,7 @@ filters:
   #     * timezone - timezone in format of Europe/Berlin.
   #     * asn - ASN in format of "AS\d+".
   #
-  - name: default_geo_filter
+  - name: default_geo_rule
     type: geo
     params:
       list: data/banned_words.txt
@@ -55,22 +60,22 @@ filters:
       #     timezone:
       #     asn:
 
-  # "reverse_lookup" filter fires only when DNS PTR answer matches
+  # "reverse_lookup" rule fires only when DNS PTR answer matches
   # with any regexp from "list". Can be used for domain banlist.
-  # May be combined with "not" wrapper/filter for domain allowlist.
+  # May be combined with "not" wrapper/rule for domain allowlist.
   # PARAMS:
   # * dns - dns server to send PTR request if form of ip:port.
   # * list - path to file with regexps (regexp re2).
   #
-  - name: default_lookup_filter
+  - name: default_lookup_rule
     type: reverse_lookup
     params:
       dns: 1.1.1.1:53
       list: data/banned_words.txt
 
-  # "time" filter fires only when time of request is in certain time period.
-  # May be combined with "and" filter for more than one time periods.
-  # May be combined with "not" wrapper/filter for time allowlist.
+  # "time" rule fires only when time of request is in certain time period.
+  # May be combined with "and" rule for more than one time periods.
+  # May be combined with "not" wrapper/rule for time allowlist.
   # PARAMS:
   # * from - start of time period in form of HH:mm.
   # * to - end of time period in form of HH:mm.
@@ -78,7 +83,7 @@ filters:
   # * weekdays - list of time period weekdays, empty == all,
   #   may be: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
   #
-  - name: example_not_time_filter
+  - name: example_not_time_rule
     type: not::time
     params:
       from: 08:00
@@ -93,19 +98,19 @@ filters:
         # - Saturday
         # - Sunday
 
-  # "regexp" filter fires when any regexp from "list" matches raw request.
+  # "regexp" rule fires when any regexp from "list" matches raw request.
   # PARAMS:
   # * list - path to file with regexps (regexp re2).
   #
-  - name: default_regexp_filter
+  - name: default_regexp_rule
     type: regexp
     params:
       list: data/banned_words.txt
 
-  # "malleable" filter fires only when HTTP(s) request did not
+  # "malleable" rule fires only when HTTP(s) request did not
   # match MalleableC2 profile.
-  # May be combined with "and" filter to use more than one profile.
-  # Filter algorithm:
+  # May be combined with "and" rule to use more than one profile.
+  # Rule algorithm:
   # 1. Verify useragent lists:
   #   a. UA did not match "block_useragents" (if not empty).
   #   b. UA matched "allow_useragents" (if not empty).
@@ -124,7 +129,7 @@ filters:
   # * profile - path to MalleableC2 profile.
   # * exclude - array of exluded paths (regexp re2).
   #
-  - name: example_malleable_filter
+  - name: example_malleable_rule
     type: malleable
     params:
       profile: data/default.profile
@@ -132,46 +137,46 @@ filters:
         - ^/some/example/.*
         - ^/some/other/example/url
 
-  # "and" filter equals boolean AND.
-  # It fires only when ALL passed filters fire.
+  # "and" rule equals boolean AND.
+  # It fires only when ALL passed rules fire.
   # PARAMS:
-  # * filters - names of filters defined above that filter.
+  # * rules - names of rules defined above that rule.
   #
   - name: and_usage_example
     type: and
     params:
-      filters:
+      rules:
         - default_ip_banlist
         - default_ip_allowlist
 
-  # "or" filter equals boolean OR.
-  # It fires when ANY passed filter fires.
+  # "or" rule equals boolean OR.
+  # It fires when ANY passed rule fires.
   # PARAMS:
-  # * filters - names of filters defined above that filter.
+  # * rules - names of rules defined above that rule.
   #
   - name: or_usage_example
     type: or
     params:
-      filters:
+      rules:
         - default_ip_banlist
         - default_ip_allowlist
 
-  # "not" filter equals boolean NOT.
-  # It fires only when passed filter does NOT fire.
-  # May be used as BASE (type: not) filter
-  # or WRAPPER filter (type: not::somefiltertype).
-  # PARAMS for BASE filter:
-  # * filter - name of the filter defined above that filter.
+  # "not" rule equals boolean NOT.
+  # It fires only when passed rule does NOT fire.
+  # May be used as BASE (type: not) rule
+  # or WRAPPER rule (type: not::someruletype).
+  # PARAMS for BASE rule:
+  # * rule - name of the rule defined above that rule.
   #
   - name: not_usage_example
     type: not
     params:
-      filter: default_ip_allowlist
+      rule: default_ip_allowlist
 
 # full globals configuration info can be found here:
 # https://github.com/D00Movenok/BounceBack/wiki/3.-Globals
 globals:
-  # API keys that will be used to fetch geo info with "geo" filters.
+  # API keys that will be used to fetch geo info with "geo" rules.
   ip-apicom_key: "" # optional
   ipapico_key: "" # optional
 
@@ -187,18 +192,27 @@ proxies:
     #   cert: test/testdata/tls/cert.pem
     #   key: test/testdata/tls/key.pem
     filter_settings:
-      action: redirect
-      url: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+      reject_action: redirect
+      reject_url: https://www.youtube.com/watch?v=dQw4w9WgXcQ
       noreject_threshold: 5
       reject_threshold: 5
     filters:
-      - default_ip_banlist
-      # - default_ip_allowlist
-      - default_geo_filter
-      - default_lookup_filter
-      # - example_not_time_filter
-      - default_regexp_filter
-      # - example_malleable_filter
+      - rule: default_ip_acceptlist
+        action: accept
+      - rule: default_ip_banlist
+        action: reject
+      # - rule: default_ip_allowlist
+      #   action: reject
+      - rule: default_geo_rule
+        action: reject
+      - rule: default_lookup_rule
+        action: reject
+      # - rule: example_not_time_rule
+      #   action: reject
+      - rule: default_regexp_rule
+        action: reject
+      # - rule: example_malleable_rule
+      #   action: reject
 
   - name: example dns proxy
     type: dns
@@ -209,17 +223,25 @@ proxies:
     #   cert: test/testdata/tls/cert.pem
     #   key: test/testdata/tls/key.pem
     filter_settings:
-      action: proxy
-      url: 1.1.1.1:53
+      reject_action: proxy
+      reject_url: 1.1.1.1:53
       noreject_threshold: 5
       reject_threshold: 5
     filters:
-      - default_ip_banlist
-      # - default_ip_allowlist
-      - default_geo_filter
-      - default_lookup_filter
-      # - example_not_time_filter
-      - default_regexp_filter
+      - rule: default_ip_acceptlist
+        action: accept
+      - rule: default_ip_banlist
+        action: reject
+      # - rule: default_ip_allowlist
+      #   action: reject
+      - rule: default_geo_rule
+        action: reject
+      - rule: default_lookup_rule
+        action: reject
+      # - rule: example_not_time_rule
+      #   action: reject
+      - rule: default_regexp_rule
+        action: reject
 
   - name: example tcp proxy
     type: tcp
@@ -230,16 +252,24 @@ proxies:
     #   cert: test/testdata/tls/cert.pem
     #   key: test/testdata/tls/key.pem
     filter_settings:
-      action: drop
+      reject_action: drop
       noreject_threshold: 5
       reject_threshold: 5
     filters:
-      - default_ip_banlist
-      # - default_ip_allowlist
-      - default_geo_filter
-      - default_lookup_filter
-      # - example_not_time_filter
-      - default_regexp_filter
+      - rule: default_ip_acceptlist
+        action: accept
+      - rule: default_ip_banlist
+        action: reject
+      # - rule: default_ip_allowlist
+      #   action: reject
+      - rule: default_geo_rule
+        action: reject
+      - rule: default_lookup_rule
+        action: reject
+      # - rule: example_not_time_rule
+      #   action: reject
+      - rule: default_regexp_rule
+        action: reject
 
   - name: example udp proxy
     type: udp
@@ -247,13 +277,21 @@ proxies:
     target: 127.0.0.1:4446
     timeout: 10s
     filter_settings:
-      action: none
+      reject_action: none
       noreject_threshold: 5
       reject_threshold: 5
     filters:
-      - default_ip_banlist
-      # - default_ip_allowlist
-      - default_geo_filter
-      - default_lookup_filter
-      # - example_not_time_filter
-      - default_regexp_filter
+      - rule: default_ip_acceptlist
+        action: accept
+      - rule: default_ip_banlist
+        action: reject
+      # - rule: default_ip_allowlist
+      #   action: reject
+      - rule: default_geo_rule
+        action: reject
+      - rule: default_lookup_rule
+        action: reject
+      # - rule: example_not_time_rule
+      #   action: reject
+      - rule: default_regexp_rule
+        action: reject

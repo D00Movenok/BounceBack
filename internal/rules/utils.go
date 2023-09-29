@@ -1,4 +1,4 @@
-package filters
+package rules
 
 import (
 	"bufio"
@@ -13,21 +13,21 @@ import (
 )
 
 func PrepareMany(
-	filters []Filter,
+	rules []Rule,
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) error {
 	var eg errgroup.Group
-	for _, f := range filters {
-		func(ff Filter) {
+	for _, r := range rules {
+		func(rr Rule) {
 			eg.Go(func() error {
-				err := ff.Prepare(e, logger)
+				err := rr.Prepare(e, logger)
 				if err != nil {
-					return fmt.Errorf("can't prepare %s: %w", ff, err)
+					return fmt.Errorf("can't prepare %s: %w", rr, err)
 				}
 				return nil
 			})
-		}(f)
+		}(r)
 	}
 	return eg.Wait() //nolint: wrapcheck // wrapped above
 }

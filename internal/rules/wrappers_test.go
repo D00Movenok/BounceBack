@@ -1,18 +1,18 @@
-package filters_test
+package rules_test
 
 import (
 	"testing"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
-	"github.com/D00Movenok/BounceBack/internal/filters"
+	"github.com/D00Movenok/BounceBack/internal/rules"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWrappers_NotFilter(t *testing.T) {
+func TestWrappers_NotRule(t *testing.T) {
 	type args struct {
-		filter *MockFilter
+		rule *MockRule
 	}
 	type want struct {
 		res      bool
@@ -26,7 +26,7 @@ func TestWrappers_NotFilter(t *testing.T) {
 		{
 			"not true",
 			args{
-				filter: &MockFilter{
+				rule: &MockRule{
 					res:    true,
 					err:    nil,
 					called: true,
@@ -40,7 +40,7 @@ func TestWrappers_NotFilter(t *testing.T) {
 		{
 			"not false",
 			args{
-				filter: &MockFilter{
+				rule: &MockRule{
 					res:    false,
 					err:    nil,
 					called: true,
@@ -54,16 +54,16 @@ func TestWrappers_NotFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.args.filter.called {
-				tt.args.filter.
+			if tt.args.rule.called {
+				tt.args.rule.
 					On("Apply", mock.Anything, mock.Anything).
-					Return(tt.args.filter.res, tt.args.filter.err)
+					Return(tt.args.rule.res, tt.args.rule.err)
 			}
-			filter := filters.NewNotWrapper(
-				tt.args.filter,
-				common.FilterConfig{},
+			rule := rules.NewNotWrapper(
+				tt.args.rule,
+				common.RuleConfig{},
 			)
-			res, err := filter.Apply(nil, log.Logger)
+			res, err := rule.Apply(nil, log.Logger)
 			require.Equalf(
 				t,
 				tt.want.applyErr,
@@ -77,7 +77,7 @@ func TestWrappers_NotFilter(t *testing.T) {
 				res,
 				"Apply() result mismatch",
 			)
-			tt.args.filter.AssertExpectations(t)
+			tt.args.rule.AssertExpectations(t)
 		})
 	}
 }
