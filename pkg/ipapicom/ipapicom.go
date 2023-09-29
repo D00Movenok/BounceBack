@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrReservedRange = errors.New("reserved range")
+	ErrPrivateRange  = errors.New("private range")
 )
 
 type Client interface {
@@ -95,10 +96,15 @@ func getLocation(
 
 	if resp.StatusCode != http.StatusOK || l.Status != "success" {
 		switch l.Message {
-		case "reserved range":
+		case ErrReservedRange.Error():
 			return nil, fmt.Errorf(
 				"can't catch ip geolocation: %w",
 				ErrReservedRange,
+			)
+		case ErrPrivateRange.Error():
+			return nil, fmt.Errorf(
+				"can't catch ip geolocation: %w",
+				ErrPrivateRange,
 			)
 		default:
 			return nil, fmt.Errorf(

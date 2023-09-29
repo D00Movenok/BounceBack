@@ -1,4 +1,4 @@
-package filters
+package rules
 
 import (
 	"bufio"
@@ -6,8 +6,33 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/D00Movenok/BounceBack/internal/wrapper"
+	"github.com/rs/zerolog"
+	"golang.org/x/sync/errgroup"
 )
 
+func PrepareMany(
+	rules []Rule,
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	var eg errgroup.Group
+	for _, r := range rules {
+		func(rr Rule) {
+			eg.Go(func() error {
+				err := rr.Prepare(e, logger)
+				if err != nil {
+					return fmt.Errorf("can't prepare %s: %w", rr, err)
+				}
+				return nil
+			})
+		}(r)
+	}
+	return eg.Wait() //nolint: wrapcheck // wrapped above
+}
+
+// parses regexp list (one regexp per line) removing content.
 func getRegexpList(path string) ([]*regexp.Regexp, error) {
 	var (
 		re *regexp.Regexp

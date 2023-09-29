@@ -25,21 +25,12 @@ func TestGetLocation(t *testing.T) {
 			},
 			false,
 			&ipapicom.Location{
-				As:          "AS13335 Cloudflare, Inc.",
-				City:        "South Brisbane",
-				Country:     "Australia",
-				CountryCode: "AU",
-				Isp:         "Cloudflare, Inc",
-				Lat:         -27.4766,
-				Lon:         153.0166,
-				Message:     "",
-				Org:         "APNIC and Cloudflare DNS Resolver project",
-				Query:       "1.1.1.1",
-				Region:      "QLD",
-				RegionName:  "Queensland",
-				Status:      "success",
-				Timezone:    "Australia/Brisbane",
-				Zip:         "4101",
+				As:      "AS13335 Cloudflare, Inc.",
+				Isp:     "Cloudflare, Inc",
+				Message: "",
+				Org:     "APNIC and Cloudflare DNS Resolver project",
+				Query:   "1.1.1.1",
+				Status:  "success",
 			},
 		},
 		{
@@ -49,21 +40,12 @@ func TestGetLocation(t *testing.T) {
 			},
 			false,
 			&ipapicom.Location{
-				As:          "AS13335 Cloudflare, Inc.",
-				City:        "San Francisco",
-				Country:     "United States",
-				CountryCode: "US",
-				Isp:         "Cloudflare, Inc.",
-				Lat:         37.7803,
-				Lon:         -122.39,
-				Message:     "",
-				Org:         "Cloudflare, Inc.",
-				Query:       "2606:4700:4700::1111",
-				Region:      "CA",
-				RegionName:  "California",
-				Status:      "success",
-				Timezone:    "America/Los_Angeles",
-				Zip:         "94107",
+				As:      "AS13335 Cloudflare, Inc.",
+				Isp:     "Cloudflare, Inc.",
+				Message: "",
+				Org:     "Cloudflare, Inc.",
+				Query:   "2606:4700:4700::1111",
+				Status:  "success",
 			},
 		},
 		{
@@ -87,11 +69,46 @@ func TestGetLocation(t *testing.T) {
 				"GetLocationForIP() get error: %s",
 				err,
 			)
-			require.Equal(t,
-				tt.want,
-				l,
-				"GetLocationForIP() ip geolocation information mismatch",
-			)
+
+			// partially compare fields, because other often changes
+			if tt.want != nil {
+				require.Equal(
+					t,
+					tt.want.As,
+					l.As,
+					"GetLocationForIP() ip AS mismatch",
+				)
+				require.Equal(
+					t,
+					tt.want.Isp,
+					l.Isp,
+					"GetLocationForIP() ip Isp mismatch",
+				)
+				require.Equal(
+					t,
+					tt.want.Message,
+					l.Message,
+					"GetLocationForIP() ip Message mismatch",
+				)
+				require.Equal(
+					t,
+					tt.want.Org,
+					l.Org,
+					"GetLocationForIP() ip Org mismatch",
+				)
+				require.Equal(
+					t,
+					tt.want.Query,
+					l.Query,
+					"GetLocationForIP() ip Query mismatch",
+				)
+				require.Equal(
+					t,
+					tt.want.Status,
+					l.Status,
+					"GetLocationForIP() ip Status mismatch",
+				)
+			}
 		})
 	}
 }

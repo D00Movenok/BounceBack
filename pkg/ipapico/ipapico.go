@@ -6,10 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 var (
-	ErrReservedRange = errors.New("reserved range")
+	ErrReservedRange = errors.New("reserved ip address")
 )
 
 type Client interface {
@@ -99,8 +100,8 @@ func getLocation(
 	}
 
 	if resp.StatusCode != http.StatusOK || l.IsError {
-		switch l.Reason {
-		case "Reserved IP Address":
+		switch strings.ToLower(l.Reason) {
+		case ErrReservedRange.Error():
 			return nil, fmt.Errorf(
 				"can't catch ip geolocation: %w",
 				ErrReservedRange,

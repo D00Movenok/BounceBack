@@ -1,4 +1,4 @@
-package filters_test
+package rules_test
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
-	"github.com/D00Movenok/BounceBack/internal/filters"
+	"github.com/D00Movenok/BounceBack/internal/rules"
 	"github.com/miekg/dns"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/mock"
@@ -93,16 +93,17 @@ func getTime(hourOffset time.Duration, minuteOffset time.Duration) string {
 	return fmt.Sprintf("%02d:%02d", now.Hour(), now.Minute())
 }
 
-func TestBase_RegexpFilter(t *testing.T) {
+func TestBase_RegexpRule(t *testing.T) {
 	type args struct {
 		raw       []byte
 		getRawErr error
-		cfg       common.FilterConfig
+		cfg       common.RuleConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -112,9 +113,9 @@ func TestBase_RegexpFilter(t *testing.T) {
 		{
 			"regexp true",
 			args{
-				raw:       []byte("test of that nice filter with two word"),
+				raw:       []byte("test of that nice rule with two word"),
 				getRawErr: nil,
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
@@ -123,17 +124,18 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"regexp false",
 			args{
-				raw:       []byte("test of that nice filter with one word"),
+				raw:       []byte("test of that nice rule with one word"),
 				getRawErr: nil,
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
@@ -142,17 +144,18 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"regexp err can't open file",
 			args{
-				raw:       []byte("test of that nice filter with two word"),
+				raw:       []byte("test of that nice rule with two word"),
 				getRawErr: errors.New("some error"),
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
@@ -161,17 +164,18 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"regexp err can't parse regexp",
 			args{
-				raw:       []byte("test of that nice filter with two word"),
+				raw:       []byte("test of that nice rule with two word"),
 				getRawErr: errors.New("some error"),
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
@@ -180,17 +184,18 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"regexp err GetRaw",
 			args{
-				raw:       []byte("test of that nice filter with two word"),
+				raw:       []byte("test of that nice rule with two word"),
 				getRawErr: errors.New("some error"),
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "regexp",
 					Params: map[string]any{
@@ -199,24 +204,26 @@ func TestBase_RegexpFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  true,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   true,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filter, err := filters.NewRegexpFilter(
+			rule, err := rules.NewRegexpRule(
 				nil,
-				filters.FilterSet{},
+				rules.RuleSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewRegexpFilter() error mismatch: %s",
+				"NewRegexpRule() error mismatch: %s",
 				err,
 			)
 
@@ -224,7 +231,16 @@ func TestBase_RegexpFilter(t *testing.T) {
 				e := new(MockEntity)
 				e.On("GetRaw").Return(tt.args.raw, tt.args.getRawErr)
 
-				res, err := filter.Apply(e, log.Logger)
+				err = rule.Prepare(e, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
+				res, err := rule.Apply(e, log.Logger)
 				require.Equalf(
 					t,
 					tt.want.applyErr,
@@ -244,15 +260,16 @@ func TestBase_RegexpFilter(t *testing.T) {
 	}
 }
 
-func TestBase_IPFilter(t *testing.T) {
+func TestBase_IPRule(t *testing.T) {
 	type args struct {
 		ip  string
-		cfg common.FilterConfig
+		cfg common.RuleConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -260,10 +277,10 @@ func TestBase_IPFilter(t *testing.T) {
 		want want
 	}{
 		{
-			"ip filter true ip v4",
+			"ip rule true ip v4",
 			args{
 				ip: "3.3.3.3",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -272,16 +289,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
-			"ip filter true ip v6",
+			"ip rule true ip v6",
 			args{
 				ip: "aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -290,16 +308,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
-			"ip filter true subnet v4",
+			"ip rule true subnet v4",
 			args{
 				ip: "2.2.3.4",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -308,16 +327,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
-			"ip filter true subnet v6",
+			"ip rule true subnet v6",
 			args{
 				ip: "fe80:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -326,16 +346,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
-			"ip filter false v4",
+			"ip rule false v4",
 			args{
 				ip: "5.5.5.5",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -344,16 +365,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
-			"ip filter false v6",
+			"ip rule false v6",
 			args{
 				ip: "bbbb:bbbb:bbbb:bbbb:bbbb:bbbb:bbbb:bbbb",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -362,32 +384,34 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"ip err can't open list",
 			args{
 				ip: "5.5.5.5",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name:   "test",
 					Type:   "ip",
 					Params: map[string]any{},
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"ip err can't parse ip v4 list",
 			args{
 				ip: "5.5.5.5",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -396,16 +420,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"ip err can't parse ip v6 list",
 			args{
 				ip: "aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -414,16 +439,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"ip err can't parse subnet ip v4 list",
 			args{
 				ip: "5.5.5.5",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -432,16 +458,17 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"ip err can't parse subnet ip v6 list",
 			args{
 				ip: "aaaa:aaaa:aaaa:aaaa:aaaa:aaaa:aaaa",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "ip",
 					Params: map[string]any{
@@ -450,24 +477,26 @@ func TestBase_IPFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filter, err := filters.NewIPFilter(
+			rule, err := rules.NewIPRule(
 				nil,
-				filters.FilterSet{},
+				rules.RuleSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewIPFilter() error mismatch: %s",
+				"NewIPRule() error mismatch: %s",
 				err,
 			)
 
@@ -475,7 +504,16 @@ func TestBase_IPFilter(t *testing.T) {
 				e := new(MockEntity)
 				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
-				res, err := filter.Apply(e, log.Logger)
+				err = rule.Prepare(e, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
+				res, err := rule.Apply(e, log.Logger)
 				require.Equalf(
 					t,
 					tt.want.applyErr,
@@ -496,14 +534,15 @@ func TestBase_IPFilter(t *testing.T) {
 }
 
 // test ignores timezone.
-func TestBase_TimeFilter(t *testing.T) {
+func TestBase_TimeRule(t *testing.T) {
 	type args struct {
-		cfg common.FilterConfig
+		cfg common.RuleConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -513,7 +552,7 @@ func TestBase_TimeFilter(t *testing.T) {
 		{
 			"time hour true",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -524,15 +563,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time minute true",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -543,15 +583,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time weekday true",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -564,15 +605,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time between days true",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -587,15 +629,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time hour false",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -606,15 +649,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time minute false",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -625,15 +669,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time weekday false",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -646,15 +691,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time between days false",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -667,15 +713,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time bad from",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -688,15 +735,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time bad to",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -709,15 +757,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time bad weekday",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -730,15 +779,16 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"time bad timezone",
 			args{
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "time",
 					Params: map[string]any{
@@ -750,29 +800,40 @@ func TestBase_TimeFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filter, err := filters.NewTimeFilter(
+			rule, err := rules.NewTimeRule(
 				nil,
-				filters.FilterSet{},
+				rules.RuleSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewTimeFilter() error mismatch: %s",
+				"NewTimeRule() error mismatch: %s",
 				err,
 			)
 
 			if !tt.want.createErr {
-				res, err := filter.Apply(nil, log.Logger)
+				err = rule.Prepare(nil, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
+				res, err := rule.Apply(nil, log.Logger)
 				require.Equalf(t,
 					tt.want.applyErr,
 					err != nil,
@@ -789,15 +850,16 @@ func TestBase_TimeFilter(t *testing.T) {
 	}
 }
 
-func TestBase_GeoFilter(t *testing.T) {
+func TestBase_GeoRule(t *testing.T) {
 	type args struct {
 		ip  string
-		cfg common.FilterConfig
+		cfg common.RuleConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -808,7 +870,7 @@ func TestBase_GeoFilter(t *testing.T) {
 			"geo geolocations array true",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -822,16 +884,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo geolocations string true",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -845,16 +908,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo list array true",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -868,16 +932,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo list array true",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -891,16 +956,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo geolocations array false",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -914,16 +980,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo geolocations string false",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -937,16 +1004,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo list false",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -960,16 +1028,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo empty false",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -984,16 +1053,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo geolocations err bad regexp",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -1007,16 +1077,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo list err can't open file",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -1030,16 +1101,17 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"geo list err bad regexp",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "geo",
 					Params: map[string]any{
@@ -1053,9 +1125,10 @@ func TestBase_GeoFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
@@ -1063,16 +1136,17 @@ func TestBase_GeoFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := database.New("", true)
 			require.NoError(t, err, "can't create db")
-			filter, err := filters.NewGeolocationFilter(
+			rule, err := rules.NewGeolocationRule(
 				db,
-				filters.FilterSet{},
+				rules.RuleSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewGeolocationFilter() error mismatch: %s",
+				"NewGeolocationRule() error mismatch: %s",
 				err,
 			)
 
@@ -1082,7 +1156,16 @@ func TestBase_GeoFilter(t *testing.T) {
 					e := new(MockEntity)
 					e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
-					res, err := filter.Apply(e, log.Logger)
+					err = rule.Prepare(e, log.Logger)
+					require.Equalf(
+						t,
+						tt.want.prepareErr,
+						err != nil,
+						"Prepare() error mismatch: %s",
+						err,
+					)
+
+					res, err := rule.Apply(e, log.Logger)
 					require.Equalf(
 						t,
 						tt.want.applyErr,
@@ -1107,15 +1190,16 @@ func TestBase_GeoFilter(t *testing.T) {
 	}
 }
 
-func TestBase_ReverseLookupFilter(t *testing.T) {
+func TestBase_ReverseLookupRule(t *testing.T) {
 	type args struct {
 		ip  string
-		cfg common.FilterConfig
+		cfg common.RuleConfig
 	}
 	type want struct {
-		res       bool
-		createErr bool
-		applyErr  bool
+		res        bool
+		createErr  bool
+		prepareErr bool
+		applyErr   bool
 	}
 	tests := []struct {
 		name string
@@ -1126,7 +1210,7 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 			"reverse lookup true",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "reverse_lookup",
 					Params: map[string]any{
@@ -1136,16 +1220,17 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       true,
-				createErr: false,
-				applyErr:  false,
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"reverse lookup false",
 			args{
 				ip: "8.8.8.8",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "reverse_lookup",
 					Params: map[string]any{
@@ -1155,16 +1240,17 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"reverse lookup err can't open file",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "reverse_lookup",
 					Params: map[string]any{
@@ -1174,16 +1260,17 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"reverse lookup err can't parse regexp",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "reverse_lookup",
 					Params: map[string]any{
@@ -1193,16 +1280,17 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"reverse lookup err can't parse dns",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "reverse_lookup",
 					Params: map[string]any{
@@ -1212,16 +1300,17 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: true,
-				applyErr:  false,
+				res:        false,
+				createErr:  true,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 		{
 			"reverse lookup err dead dns",
 			args{
 				ip: "1.1.1.1",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "reverse_lookup",
 					Params: map[string]any{
@@ -1231,16 +1320,17 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  true,
+				res:        false,
+				createErr:  false,
+				prepareErr: true,
+				applyErr:   true,
 			},
 		},
 		{
 			"reverse lookup err unknown ip",
 			args{
 				ip: "195.168.14.15",
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "reverse_lookup",
 					Params: map[string]any{
@@ -1250,9 +1340,10 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				},
 			},
 			want{
-				res:       false,
-				createErr: false,
-				applyErr:  false,
+				res:        false,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
 			},
 		},
 	}
@@ -1260,16 +1351,17 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := database.New("", true)
 			require.NoError(t, err, "can't create db")
-			filter, err := filters.NewReverseLookupFilter(
+			rule, err := rules.NewReverseLookupRule(
 				db,
-				filters.FilterSet{},
+				rules.RuleSet{},
 				tt.args.cfg,
+				common.Globals{},
 			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewReverseLookupFilter() error mismatch: %s",
+				"NewReverseLookupRule() error mismatch: %s",
 				err,
 			)
 
@@ -1277,7 +1369,16 @@ func TestBase_ReverseLookupFilter(t *testing.T) {
 				e := new(MockEntity)
 				e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 
-				res, err := filter.Apply(e, log.Logger)
+				err = rule.Prepare(e, log.Logger)
+				require.Equalf(
+					t,
+					tt.want.prepareErr,
+					err != nil,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
+				res, err := rule.Apply(e, log.Logger)
 				require.Equalf(
 					t,
 					tt.want.applyErr,

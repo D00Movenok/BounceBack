@@ -7,8 +7,8 @@ import (
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
-	"github.com/D00Movenok/BounceBack/internal/filters"
 	"github.com/D00Movenok/BounceBack/internal/proxy/base"
+	"github.com/D00Movenok/BounceBack/internal/rules"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 	"github.com/miekg/dns"
 
@@ -21,18 +21,18 @@ const (
 
 var (
 	AllowedActions = []string{
-		common.ActionProxy,
-		common.ActionDrop,
-		common.ActionNone,
+		common.RejectActionProxy,
+		common.RejectActionDrop,
+		common.RejectActionNone,
 	}
 )
 
 func NewProxy(
 	cfg common.ProxyConfig,
-	fs *filters.FilterSet,
+	rs *rules.RuleSet,
 	db *database.DB,
 ) (*Proxy, error) {
-	baseProxy, err := base.NewBaseProxy(cfg, fs, db, AllowedActions)
+	baseProxy, err := base.NewBaseProxy(cfg, rs, db, AllowedActions)
 	if err != nil {
 		return nil, fmt.Errorf("can't create base proxy: %w", err)
 	}
@@ -43,9 +43,9 @@ func NewProxy(
 	}
 
 	var action netip.AddrPort
-	if cfg.FilterSettings.Action == common.ActionProxy ||
-		cfg.FilterSettings.Action == common.ActionRedirect {
-		action, err = netip.ParseAddrPort(cfg.FilterSettings.URL)
+	if cfg.RuleSettings.RejectAction == common.RejectActionProxy ||
+		cfg.RuleSettings.RejectAction == common.RejectActionRedirect {
+		action, err = netip.ParseAddrPort(cfg.RuleSettings.RejectURL)
 		if err != nil {
 			return nil, fmt.Errorf("can't parse AddrPort: %w", err)
 		}
@@ -158,11 +158,11 @@ func (p *Proxy) processVerdict(
 	r *dns.Msg,
 	logger zerolog.Logger,
 ) {
-	switch p.Config.FilterSettings.Action {
-	case common.ActionProxy:
+	switch p.Config.RuleSettings.RejectAction {
+	case common.RejectActionProxy:
 		p.proxyRequest(p.ActionURL, w, r, logger)
-	case common.ActionDrop:
-		// do nothing
+	case common.RejectActionDrop:
+		// do nothing (no proxy request)
 	default:
 		logger.Warn().Msg("Request was filtered, but action is none")
 		p.proxyRequest(p.TargetURL, w, r, logger)

@@ -19,8 +19,8 @@ For more information on tool usage, you may visit [project's wiki](https://githu
 
 ## Features
 
-* Highly configurable and customizable filters pipeline with boolean-based concatenation of filters will be able to hide your infrastructure from the most keen blue eyes.
-* Easily extendable project structure, everyone can add filters for their own C2.
+* Highly configurable and customizable filters pipeline with boolean-based concatenation of rules will be able to hide your infrastructure from the most keen blue eyes.
+* Easily extendable project structure, everyone can add rules for their own C2.
 * Integrated and curated massive blacklist of IPv4 pools and ranges known to be associated with IT Security vendors combined with IP filter to disallow them to use/attack your infrastructure.
 * Malleable C2 Profile parser is able to validate inbound HTTP(s) traffic against the Malleable's config and reject invalidated packets.
 * Out of the box domain fronting support allows you to hide your infrastructure a little bit more.
@@ -29,21 +29,21 @@ For more information on tool usage, you may visit [project's wiki](https://githu
 * Support for multiple proxies with different filter pipelines at one BounceBack instance.
 * Verbose logging mechanism allows you to keep track of all incoming requests and events for analyzing blue team behaviour and debug issues.
 
-## Filters
+## Rules
 
 BounceBack currently supports the following filters:
 
-* Boolean-based (and, or, not) filters combinations
+* Boolean-based (and, or, not) rules combinations
 * IP and subnet analysis
 * IP geolocation fields inspection
 * Reverse lookup domain probe
 * Raw packet regexp matching
 * Malleable C2 profiles traffic validation
-* Work (or not) hours filter
+* Work (or not) hours rule
 
-Custom filters may be easily added, just register your [FilterBaseCreator](/internal/filters/default.go#L9) or [FilterWrapperCreator](/internal/filters/default.go#L3). See already created [FilterBaseCreators](/internal/filters/base_common.go) and [FilterWrapperCreators](/internal/filters/wrappers.go)
+Custom rules may be easily added, just register your [RuleBaseCreator](/internal/rules/default.go#L9) or [RuleWrapperCreator](/internal/rules/default.go#L3). See already created [RuleBaseCreators](/internal/rules/base_common.go) and [RuleWrapperCreators](/internal/rules/wrappers.go)
 
-Filters configuration page may be found [here](https://github.com/D00Movenok/BounceBack/wiki/1.-Filters).
+Rules configuration page may be found [here](https://github.com/D00Movenok/BounceBack/wiki/1.-Rules).
 
 ## Proxies
 

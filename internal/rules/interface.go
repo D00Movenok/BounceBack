@@ -1,4 +1,4 @@
-package filters
+package rules
 
 import (
 	"fmt"
@@ -9,18 +9,20 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type Filter interface {
+type Rule interface {
+	Prepare(wrapper.Entity, zerolog.Logger) error
 	Apply(wrapper.Entity, zerolog.Logger) (bool, error)
 	fmt.Stringer
 }
 
-type FilterBaseCreator func(
+type RuleBaseCreator func(
 	db *database.DB,
-	fs FilterSet,
-	cfg common.FilterConfig,
-) (Filter, error)
+	rs RuleSet,
+	cfg common.RuleConfig,
+	globals common.Globals,
+) (Rule, error)
 
-type FilterWrapperCreator func(
-	filter Filter,
-	cfg common.FilterConfig,
-) Filter
+type RuleWrapperCreator func(
+	rule Rule,
+	cfg common.RuleConfig,
+) Rule

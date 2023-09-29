@@ -1,4 +1,4 @@
-package filters_test
+package rules_test
 
 import (
 	"errors"
@@ -7,21 +7,29 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
-	"github.com/D00Movenok/BounceBack/internal/filters"
+	"github.com/D00Movenok/BounceBack/internal/rules"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-type MockFilter struct {
+type MockRule struct {
 	mock.Mock
 	res    bool
 	err    error
 	called bool
 }
 
-func (m *MockFilter) Apply(
+func (m *MockRule) Prepare(
+	e wrapper.Entity,
+	logger zerolog.Logger,
+) error {
+	params := m.Called(e, logger)
+	return params.Error(0) //nolint: wrapcheck // mock
+}
+
+func (m *MockRule) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -29,14 +37,14 @@ func (m *MockFilter) Apply(
 	return params.Bool(0), params.Error(1)
 }
 
-func (m *MockFilter) String() string {
+func (m *MockRule) String() string {
 	return "mock"
 }
 
-func TestComposites_CompositeAndFilter(t *testing.T) {
+func TestComposites_CompositeAndRule(t *testing.T) {
 	type args struct {
-		fs  map[string]*MockFilter
-		cfg common.FilterConfig
+		rs  map[string]*MockRule
+		cfg common.RuleConfig
 	}
 	type want struct {
 		res       bool
@@ -51,7 +59,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		{
 			"and true",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    true,
 						err:    nil,
@@ -63,11 +71,11 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 						called: true,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "and",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2"},
+						"rules": []string{"r1", "r2"},
 					},
 				},
 			},
@@ -80,7 +88,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		{
 			"and false",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    true,
 						err:    nil,
@@ -97,11 +105,11 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 						called: false,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "and",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2", "r3"},
+						"rules": []string{"r1", "r2", "r3"},
 					},
 				},
 			},
@@ -112,9 +120,9 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 			},
 		},
 		{
-			"and filter error",
+			"and rule error",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    true,
 						err:    errors.New("some error"),
@@ -126,11 +134,11 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 						called: false,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "and",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2"},
+						"rules": []string{"r1", "r2"},
 					},
 				},
 			},
@@ -141,14 +149,14 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 			},
 		},
 		{
-			"and unk filter error",
+			"and unk rule error",
 			args{
-				fs: map[string]*MockFilter{},
-				cfg: common.FilterConfig{
+				rs: map[string]*MockRule{},
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "and",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2"},
+						"rules": []string{"r1", "r2"},
 					},
 				},
 			},
@@ -161,18 +169,18 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 		{
 			"and not enough Params",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    true,
 						err:    nil,
 						called: false,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "and",
 					Params: map[string]any{
-						"filters": []string{"r1"},
+						"rules": []string{"r1"},
 					},
 				},
 			},
@@ -185,28 +193,47 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fs := filters.FilterSet{
-				Filters: map[string]filters.Filter{},
+			rs := rules.RuleSet{
+				Rules: map[string]rules.Rule{},
 			}
-			for k, v := range tt.args.fs {
+			for k, v := range tt.args.rs {
+				if !tt.want.createErr {
+					v.
+						On("Prepare", mock.Anything, mock.Anything).
+						Return(nil)
+				}
+
 				if v.called {
 					v.
 						On("Apply", mock.Anything, mock.Anything).
 						Return(v.res, v.err)
 				}
-				fs.Filters[k] = v
+				rs.Rules[k] = v
 			}
 
-			filter, err := filters.NewCompositeAndFilter(nil, fs, tt.args.cfg)
+			rule, err := rules.NewCompositeAndRule(
+				nil,
+				rs,
+				tt.args.cfg,
+				common.Globals{},
+			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewCompositeAndFilter() error mismatch: %s",
+				"NewCompositeAndRule() error mismatch: %s",
 				err,
 			)
 			if !tt.want.createErr {
-				res, err := filter.Apply(nil, log.Logger)
+				err := rule.Prepare(nil, log.Logger)
+				require.NoError(
+					t,
+					err,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
+				res, err := rule.Apply(nil, log.Logger)
 				require.Equalf(
 					t,
 					tt.want.applyErr,
@@ -221,7 +248,7 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 					"Apply() result mismatch",
 				)
 
-				for _, v := range tt.args.fs {
+				for _, v := range tt.args.rs {
 					if v.called {
 						v.AssertExpectations(t)
 					}
@@ -231,10 +258,10 @@ func TestComposites_CompositeAndFilter(t *testing.T) {
 	}
 }
 
-func TestComposites_CompositeOrFilter(t *testing.T) {
+func TestComposites_CompositeOrRule(t *testing.T) {
 	type args struct {
-		fs  map[string]*MockFilter
-		cfg common.FilterConfig
+		rs  map[string]*MockRule
+		cfg common.RuleConfig
 	}
 	type want struct {
 		res       bool
@@ -249,7 +276,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		{
 			"or true",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    false,
 						err:    nil,
@@ -266,11 +293,11 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 						called: false,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "or",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2", "r3"},
+						"rules": []string{"r1", "r2", "r3"},
 					},
 				},
 			},
@@ -283,7 +310,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		{
 			"or false",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    false,
 						err:    nil,
@@ -295,11 +322,11 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 						called: true,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "or",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2"},
+						"rules": []string{"r1", "r2"},
 					},
 				},
 			},
@@ -310,9 +337,9 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 			},
 		},
 		{
-			"or filter error",
+			"or rule error",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    false,
 						err:    errors.New("some error"),
@@ -324,11 +351,11 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 						called: false,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "or",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2"},
+						"rules": []string{"r1", "r2"},
 					},
 				},
 			},
@@ -339,14 +366,14 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 			},
 		},
 		{
-			"or unk filter error",
+			"or unk rule error",
 			args{
-				fs: map[string]*MockFilter{},
-				cfg: common.FilterConfig{
+				rs: map[string]*MockRule{},
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "or",
 					Params: map[string]any{
-						"filters": []string{"r1", "r2"},
+						"rules": []string{"r1", "r2"},
 					},
 				},
 			},
@@ -359,18 +386,18 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 		{
 			"or not enough Params",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    true,
 						err:    nil,
 						called: false,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "or",
 					Params: map[string]any{
-						"filters": []string{"r1"},
+						"rules": []string{"r1"},
 					},
 				},
 			},
@@ -383,28 +410,46 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fs := filters.FilterSet{
-				Filters: map[string]filters.Filter{},
+			rs := rules.RuleSet{
+				Rules: map[string]rules.Rule{},
 			}
-			for k, v := range tt.args.fs {
+			for k, v := range tt.args.rs {
+				if !tt.want.createErr {
+					v.
+						On("Prepare", mock.Anything, mock.Anything).
+						Return(nil)
+				}
+
 				if v.called {
 					v.
 						On("Apply", mock.Anything, mock.Anything).
 						Return(v.res, v.err)
 				}
-				fs.Filters[k] = v
+				rs.Rules[k] = v
 			}
 
-			filter, err := filters.NewCompositeOrFilter(nil, fs, tt.args.cfg)
+			rule, err := rules.NewCompositeOrRule(nil,
+				rs,
+				tt.args.cfg,
+				common.Globals{},
+			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewCompositeOrFilter() error mismatch: %s",
+				"NewCompositeOrRule() error mismatch: %s",
 				err,
 			)
 			if !tt.want.createErr {
-				res, err := filter.Apply(nil, log.Logger)
+				err := rule.Prepare(nil, log.Logger)
+				require.NoError(
+					t,
+					err,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
+				res, err := rule.Apply(nil, log.Logger)
 				require.Equalf(
 					t,
 					tt.want.applyErr,
@@ -419,7 +464,7 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 					"Apply() result mismatch",
 				)
 
-				for _, v := range tt.args.fs {
+				for _, v := range tt.args.rs {
 					if v.called {
 						v.AssertExpectations(t)
 					}
@@ -429,10 +474,10 @@ func TestComposites_CompositeOrFilter(t *testing.T) {
 	}
 }
 
-func TestComposites_CompositeNotFilter(t *testing.T) {
+func TestComposites_CompositeNotRule(t *testing.T) {
 	type args struct {
-		fs  map[string]*MockFilter
-		cfg common.FilterConfig
+		rs  map[string]*MockRule
+		cfg common.RuleConfig
 	}
 	type want struct {
 		res       bool
@@ -447,18 +492,18 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		{
 			"not true",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    false,
 						err:    nil,
 						called: true,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "not",
 					Params: map[string]any{
-						"filter": "r1",
+						"rule": "r1",
 					},
 				},
 			},
@@ -471,18 +516,18 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		{
 			"not false",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    true,
 						err:    nil,
 						called: true,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "not",
 					Params: map[string]any{
-						"filter": "r1",
+						"rule": "r1",
 					},
 				},
 			},
@@ -493,20 +538,20 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 			},
 		},
 		{
-			"not filter error",
+			"not rule error",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    false,
 						err:    errors.New("some error"),
 						called: true,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "not",
 					Params: map[string]any{
-						"filter": "r1",
+						"rule": "r1",
 					},
 				},
 			},
@@ -517,14 +562,14 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 			},
 		},
 		{
-			"not unk filter error",
+			"not unk rule error",
 			args{
-				fs: map[string]*MockFilter{},
-				cfg: common.FilterConfig{
+				rs: map[string]*MockRule{},
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "not",
 					Params: map[string]any{
-						"filter": "r1",
+						"rule": "r1",
 					},
 				},
 			},
@@ -537,7 +582,7 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 		{
 			"not not enough Params or too many arguments",
 			args{
-				fs: map[string]*MockFilter{
+				rs: map[string]*MockRule{
 					"r1": {
 						res:    true,
 						err:    nil,
@@ -549,11 +594,11 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 						called: false,
 					},
 				},
-				cfg: common.FilterConfig{
+				cfg: common.RuleConfig{
 					Name: "test",
 					Type: "not",
 					Params: map[string]any{
-						"filter": []string{"r1", "r2"},
+						"rule": []string{"r1", "r2"},
 					},
 				},
 			},
@@ -566,28 +611,46 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fs := filters.FilterSet{
-				Filters: map[string]filters.Filter{},
+			rs := rules.RuleSet{
+				Rules: map[string]rules.Rule{},
 			}
-			for k, v := range tt.args.fs {
+			for k, v := range tt.args.rs {
+				if !tt.want.createErr {
+					v.
+						On("Prepare", mock.Anything, mock.Anything).
+						Return(nil)
+				}
+
 				if v.called {
 					v.
 						On("Apply", mock.Anything, mock.Anything).
 						Return(v.res, v.err)
 				}
-				fs.Filters[k] = v
+				rs.Rules[k] = v
 			}
 
-			filter, err := filters.NewCompositeNotFilter(nil, fs, tt.args.cfg)
+			rule, err := rules.NewCompositeNotRule(nil,
+				rs,
+				tt.args.cfg,
+				common.Globals{},
+			)
 			require.Equalf(
 				t,
 				tt.want.createErr,
 				err != nil,
-				"NewCompositeNotFilter() error mismatch: %s",
+				"NewCompositeNotRule() error mismatch: %s",
 				err,
 			)
 			if !tt.want.createErr {
-				res, err := filter.Apply(nil, log.Logger)
+				err := rule.Prepare(nil, log.Logger)
+				require.NoError(
+					t,
+					err,
+					"Prepare() error mismatch: %s",
+					err,
+				)
+
+				res, err := rule.Apply(nil, log.Logger)
 				require.Equalf(
 					t,
 					tt.want.applyErr,
@@ -602,7 +665,7 @@ func TestComposites_CompositeNotFilter(t *testing.T) {
 					"Apply() result mismatch",
 				)
 
-				for _, v := range tt.args.fs {
+				for _, v := range tt.args.rs {
 					if v.called {
 						v.AssertExpectations(t)
 					}
