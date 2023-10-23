@@ -79,10 +79,9 @@ func NewBaseProxy(
 		if err != nil {
 			return nil, fmt.Errorf("can't load tls config: %w", err)
 		}
-		// #nosec G402
 		base.TLSConfig = &tls.Config{
 			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, //nolint: gosec // selfsigned support
 		}
 	}
 
