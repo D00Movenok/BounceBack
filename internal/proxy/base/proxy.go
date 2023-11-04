@@ -2,6 +2,7 @@ package base
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"sync"
 	"time"
@@ -73,15 +74,46 @@ func NewBaseProxy(
 		rules: rs,
 	}
 
-	if cfg.TLS != nil {
-		var cert tls.Certificate
-		cert, err = tls.LoadX509KeyPair(cfg.TLS.Cert, cfg.TLS.Key)
-		if err != nil {
-			return nil, fmt.Errorf("can't load tls config: %w", err)
+	if len(cfg.TLS) > 0 {
+		var (
+			nameToCerts  = map[string]*tls.Certificate{}
+			unnamedCerts []tls.Certificate
+			cert         tls.Certificate
+			leaf         *x509.Certificate
+		)
+
+		for _, t := range cfg.TLS {
+			cert, err = tls.LoadX509KeyPair(t.Cert, t.Key)
+			if err != nil {
+				return nil, fmt.Errorf("can't load tls certificate: %w", err)
+			}
+
+			leaf, err = x509.ParseCertificate(cert.Certificate[0])
+			if err != nil {
+				return nil, fmt.Errorf("can't parse x509 certificate: %w", err)
+			}
+			cert.Leaf = leaf
+
+			if t.Domain != "" {
+				logger.Debug().
+					Str("cert", t.Cert).
+					Str("key", t.Key).
+					Str("domain", t.Domain).
+					Msg("Loaded scoped certificate")
+				nameToCerts[t.Domain] = &cert
+			} else {
+				logger.Debug().
+					Str("cert", t.Cert).
+					Str("key", t.Key).
+					Msg("Loaded certificate")
+				unnamedCerts = append(unnamedCerts, cert)
+			}
 		}
+
+		//nolint: gosec // ignore tls min version
 		base.TLSConfig = &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: true, //nolint: gosec // selfsigned support
+			Certificates:      unnamedCerts,
+			NameToCertificate: nameToCerts,
 		}
 	}
 

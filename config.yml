@@ -189,8 +189,13 @@ proxies:
     target: http://127.0.0.1:8080
     timeout: 10s
     # tls:
-    #   cert: test/testdata/tls/cert.pem
-    #   key: test/testdata/tls/key.pem
+    #   - cert: test/testdata/tls/cert_bounceback_test.pem
+    #     key: test/testdata/tls/key_bounceback_test.pem
+    #   - cert: test/testdata/tls/cert_example_com.pem
+    #     key: test/testdata/tls/key_example_com.pem
+    #   - cert: test/testdata/tls/cert_example_com.pem
+    #     key: test/testdata/tls/key_example_com.pem
+    #     domain: "*.example.org"
     filter_settings:
       reject_action: redirect
       reject_url: https://www.youtube.com/watch?v=dQw4w9WgXcQ
@@ -219,9 +224,6 @@ proxies:
     listen: 0.0.0.0:53
     target: 127.0.0.1:50053
     timeout: 10s
-    # tls:
-    #   cert: test/testdata/tls/cert.pem
-    #   key: test/testdata/tls/key.pem
     filter_settings:
       reject_action: proxy
       reject_url: 1.1.1.1:53
@@ -249,8 +251,13 @@ proxies:
     target: tcp://127.0.0.1:4444
     timeout: 10s
     # tls:
-    #   cert: test/testdata/tls/cert.pem
-    #   key: test/testdata/tls/key.pem
+    #   - cert: test/testdata/tls/cert_bounceback_test.pem
+    #     key: test/testdata/tls/key_bounceback_test.pem
+    #   - cert: test/testdata/tls/cert_example_com.pem
+    #     key: test/testdata/tls/key_example_com.pem
+    #   - cert: test/testdata/tls/cert_example_com.pem
+    #     key: test/testdata/tls/key_example_com.pem
+    #     domain: "*.example.org"
     filter_settings:
       reject_action: drop
       noreject_threshold: 5

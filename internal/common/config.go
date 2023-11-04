@@ -21,8 +21,9 @@ type RuleConfig struct {
 }
 
 type TLS struct {
-	Cert string `mapstructure:"cert"`
-	Key  string `mapstructure:"key"`
+	Cert   string `mapstructure:"cert"`
+	Key    string `mapstructure:"key"`
+	Domain string `mapstructure:"domain"`
 }
 
 type RuleSettings struct {
@@ -44,7 +45,7 @@ type ProxyConfig struct {
 	ListenAddr   string        `mapstructure:"listen"`
 	TargetAddr   string        `mapstructure:"target"`
 	Timeout      time.Duration `mapstructure:"timeout"`
-	TLS          *TLS          `mapstructure:"tls"`
+	TLS          []TLS         `mapstructure:"tls"`
 	RuleSettings RuleSettings  `mapstructure:"filter_settings"`
 	Filters      []Filter      `mapstructure:"filters"`
 }
