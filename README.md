@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/D00Movenok/BounceBack)](https://goreportcard.com/report/github.com/D00Movenok/BounceBack)
 [![Tests](https://github.com/D00Movenok/BounceBack/actions/workflows/tests.yml/badge.svg)](https://github.com/D00Movenok/BounceBack/actions/workflows/tests.yml)
 [![CodeQL](https://github.com/D00Movenok/BounceBack/actions/workflows/codeql.yml/badge.svg)](https://github.com/D00Movenok/BounceBack/actions/workflows/codeql.yml)
+[![Docs](https://img.shields.io/badge/docs-wiki-blue?logo=GitBook)](https://github.com/D00Movenok/BounceBack/wiki)
 
 ↕️🤫 Stealth redirector for your red team operation security.
 
