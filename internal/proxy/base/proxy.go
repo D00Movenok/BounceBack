@@ -112,8 +112,9 @@ func NewBaseProxy(
 
 		//nolint: gosec // ignore tls min version
 		base.TLSConfig = &tls.Config{
-			Certificates:      unnamedCerts,
-			NameToCertificate: nameToCerts,
+			Certificates:       unnamedCerts,
+			NameToCertificate:  nameToCerts,
+			InsecureSkipVerify: true, // for selfsigned tls client certs
 		}
 	}
 
