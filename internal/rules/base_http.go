@@ -453,8 +453,10 @@ func (f *MallebaleRule) verifyHeaders(
 	}
 
 	for _, h := range pheaders {
-		header, ok := headers[h.Name]
-		if !ok || !slices.Contains(header, h.Value) {
+		header, ok := headers[http.CanonicalHeaderKey(h.Name)]
+		if !ok || !slices.ContainsFunc(header, func(e string) bool {
+			return strings.EqualFold(e, h.Value)
+		}) {
 			return false, nil
 		}
 	}
