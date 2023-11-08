@@ -39,7 +39,7 @@ func (r *HTTPRequest) GetIP() netip.Addr {
 		addr = ap.Addr()
 	}
 
-	return addr
+	return addr.Unmap()
 }
 
 func (r *HTTPRequest) GetRaw() ([]byte, error) {

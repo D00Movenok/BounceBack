@@ -220,7 +220,7 @@ func (p *Proxy) getHandler() http.HandlerFunc {
 			Stringer("from", e.GetIP()).
 			Logger()
 
-		logRequest(r, logger)
+		logRequest(e, logger)
 		if !p.RunFilters(e, logger) {
 			p.processVerdict(w, r, e, logger)
 			return

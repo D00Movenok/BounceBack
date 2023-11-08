@@ -25,6 +25,7 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 
 	proxies := make([]Proxy, len(cfg.Proxies))
 	for i, pc := range cfg.Proxies {
+		log.Trace().Any("proxy_cfg", pc).Msg("Creating proxy")
 		switch pc.Type {
 		case http.ProxyType:
 			proxies[i], err = http.NewProxy(pc, rs, db)

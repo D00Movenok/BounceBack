@@ -173,17 +173,17 @@ func (p *Proxy) getHandler(t string) dns.HandlerFunc {
 	return func(w dns.ResponseWriter, r *dns.Msg) {
 		defer w.Close()
 
-		from := base.NetAddrToNetipAddrPort(w.RemoteAddr())
+		from := base.NetAddrToNetipAddrPort(w.RemoteAddr()).Addr().Unmap()
 		logger := p.Logger.With().
-			Stringer("from", from.Addr()).
-			Str("type", t).
+			Stringer("from", from).
+			Str("protocol", t).
 			Logger()
 
 		logRequest(r, logger)
 
 		e := &wrapper.DNSRequest{
 			Request: r,
-			From:    from.Addr(),
+			From:    from,
 		}
 		if !p.RunFilters(e, logger) {
 			p.processVerdict(w, r, logger)

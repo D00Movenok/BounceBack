@@ -99,12 +99,14 @@ func NewBaseProxy(
 					Str("cert", t.Cert).
 					Str("key", t.Key).
 					Str("domain", t.Domain).
+					Time("valid", cert.Leaf.NotAfter).
 					Msg("Loaded scoped certificate")
 				nameToCerts[t.Domain] = &cert
 			} else {
 				logger.Debug().
 					Str("cert", t.Cert).
 					Str("key", t.Key).
+					Time("valid", cert.Leaf.NotAfter).
 					Msg("Loaded certificate")
 				unnamedCerts = append(unnamedCerts, cert)
 			}
@@ -159,6 +161,8 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 
 		ruleLogger := logger.With().Str("rule", f.Rule).Logger()
 		rule, _ := p.rules.Get(f.Rule)
+
+		ruleLogger.Trace().Msg("Applying rule")
 		fired, err := rule.Apply(e, ruleLogger)
 		if err != nil {
 			ruleLogger.Error().Err(err).Msg("Rule error, skipping...")
@@ -169,19 +173,20 @@ func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 			continue
 		}
 
+		ruleLogger.Warn().Str("action", f.Action).Msg("Running action")
 		if f.Action == common.FilterActionReject {
-			ruleLogger.Warn().Msg("Rejected")
 			err = p.db.IncRejects(ip)
 			if err != nil {
 				logger.Error().Err(err).Msg("Can't increase rejects")
 			}
 			return false
-		} else if f.Action == common.FilterActionAccept {
-			ruleLogger.Warn().Msg("Accepted")
-			break
 		}
+
+		// accept action
+		break
 	}
 
+	logger.Debug().Msg("Accepted")
 	err := p.db.IncAccepts(ip)
 	if err != nil {
 		logger.Error().Err(err).Msg("Can't increase accepts")
@@ -201,6 +206,7 @@ func (p *Proxy) isRejectedByThreshold(ip string, logger zerolog.Logger) bool {
 	switch {
 	case p.Config.RuleSettings.NoRejectThreshold > 0 &&
 		v.Accepts >= p.Config.RuleSettings.NoRejectThreshold:
+		logger.Debug().Msg("Non-rejected permanently")
 	case p.Config.RuleSettings.RejectThreshold > 0 &&
 		v.Rejects >= p.Config.RuleSettings.RejectThreshold:
 		logger.Warn().Msg("Rejected permanently")

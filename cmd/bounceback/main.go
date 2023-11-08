@@ -47,11 +47,10 @@ var (
 		"bounceback.log",
 		"Path to the log file",
 	)
-	verbose = pflag.BoolP(
+	verbose = pflag.CountP(
 		"verbose",
 		"v",
-		false,
-		"Verbose logging",
+		"Verbose logging (0 = info, 1 = debug, 2+ = trace)",
 	)
 )
 
@@ -115,11 +114,18 @@ func initLogger() {
 }
 
 func setLogLevel() {
-	if *verbose {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
+	switch *verbose {
+	case 0:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case 1:
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	}
+
+	log.Info().
+		Stringer("verbosity", zerolog.GlobalLevel()).
+		Msg("LogLevel")
 }
 
 func parseConfig() {

@@ -173,18 +173,18 @@ func (p *Proxy) handleConnection(src net.Conn) {
 	defer p.WG.Done()
 	defer src.Close()
 
-	from := base.NetAddrToNetipAddrPort(src.RemoteAddr())
+	from := base.NetAddrToNetipAddrPort(src.RemoteAddr()).Addr().Unmap()
 	logger := p.Logger.With().
-		Stringer("from", from.Addr()).
+		Stringer("from", from).
 		Logger()
 
-	logger.Debug().Msg("New request")
+	logger.Info().Msg("New request")
 
 	// first packet analysis so no data was read
 	// TODO: drop filtered packets after SYN, not ACK.
 	e := &wrapper.RawPacket{
 		Content: []byte{},
-		From:    from.Addr(),
+		From:    from,
 	}
 	if !p.RunFilters(e, logger) && p.processVerdict(src, logger) {
 		return

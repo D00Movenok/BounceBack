@@ -172,7 +172,7 @@ func (p *Proxy) replyLoop(
 func (p *Proxy) handleConnection(src *net.UDPAddr, data []byte) {
 	defer p.WG.Done()
 
-	from := src.AddrPort().Addr()
+	from := src.AddrPort().Addr().Unmap()
 	logger := p.Logger.With().
 		Stringer("from", from).
 		Logger()
@@ -182,7 +182,7 @@ func (p *Proxy) handleConnection(src *net.UDPAddr, data []byte) {
 	if exist {
 		c, _ = v.(*Connection)
 	} else {
-		logger.Debug().Msg("New request")
+		logger.Info().Msg("New request")
 	}
 
 	e := &wrapper.RawPacket{

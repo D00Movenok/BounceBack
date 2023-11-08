@@ -171,7 +171,7 @@ func (f *MallebaleRule) isExcluded(
 	}
 	for _, e := range f.exclude {
 		if e.MatchString(url.Path) {
-			logger.Debug().Stringer("match", e).Msg("Exclude URL match")
+			logger.Trace().Stringer("match", e).Msg("Exclude URL match")
 			return true, nil
 		}
 	}
@@ -201,9 +201,13 @@ func (f *MallebaleRule) findProfile(
 	logger zerolog.Logger,
 ) (bool, error) {
 	for _, p := range f.profile.HTTPGet {
+		pl := logger.With().
+			Str("profile", p.Name).
+			Str("type", "http-get").
+			Logger()
 		allow, err := f.verifyHTTPProfile(
 			e,
-			logger,
+			pl,
 			p.Verb,
 			http.MethodGet,
 			p.URI,
@@ -215,15 +219,19 @@ func (f *MallebaleRule) findProfile(
 			return false, fmt.Errorf("can't verify get profile: %w", err)
 		}
 		if allow {
-			logger.Debug().Str("match", p.Name).Msg("http-get match")
+			pl.Trace().Msg("Match")
 			return true, nil
 		}
 	}
 
 	for _, p := range f.profile.HTTPPost {
+		pl := logger.With().
+			Str("profile", p.Name).
+			Str("type", "http-post").
+			Logger()
 		allow, err := f.verifyHTTPProfile(
 			e,
-			logger,
+			pl,
 			p.Verb,
 			http.MethodPost,
 			p.URI,
@@ -235,16 +243,20 @@ func (f *MallebaleRule) findProfile(
 			return false, fmt.Errorf("can't verify post profile: %w", err)
 		}
 		if allow {
-			logger.Debug().Str("match", p.Name).Msg("http-post match")
+			pl.Trace().Msg("Match")
 			return true, nil
 		}
 	}
 
 	if f.profile.HostStage {
 		for _, p := range f.profile.HTTPStager {
+			pl := logger.With().
+				Str("profile", p.Name).
+				Str("type", "http-stager").
+				Logger()
 			allow, err := f.verifyHTTPProfile(
 				e,
-				logger,
+				pl,
 				http.MethodGet,
 				http.MethodGet,
 				append(p.URIx64, p.URIx86...),
@@ -259,7 +271,7 @@ func (f *MallebaleRule) findProfile(
 				)
 			}
 			if allow {
-				logger.Debug().Str("match", p.Name).Msg("http-stager match")
+				pl.Trace().Msg("Match")
 				return true, nil
 			}
 		}
@@ -269,6 +281,7 @@ func (f *MallebaleRule) findProfile(
 			return false, fmt.Errorf("can't verify stager path: %w", err)
 		}
 		if allow {
+			// Debug, because blues may use stage urls for C2 searching
 			logger.Debug().Msg("Stager URL match")
 			return true, nil
 		}
@@ -311,7 +324,7 @@ func (f *MallebaleRule) verifyHTTPProfile(
 	}
 
 	// verify method
-	ok, err := f.verifyMethod(e, method, defaultMethod)
+	ok, err := f.verifyMethod(e, logger, method, defaultMethod)
 	if err != nil {
 		return false, fmt.Errorf("can't verify method: %w", err)
 	}
@@ -362,6 +375,7 @@ func (f *MallebaleRule) verifyHTTPProfile(
 
 func (f *MallebaleRule) verifyMethod(
 	e wrapper.Entity,
+	logger zerolog.Logger,
 	method string,
 	defaultMethod string,
 ) (bool, error) {
@@ -370,8 +384,16 @@ func (f *MallebaleRule) verifyMethod(
 		return false, fmt.Errorf("can't get method: %w", err)
 	}
 
+	wantMethod := defaultMethod
+	if method != "" {
+		wantMethod = method
+	}
+
 	// verify method
-	if m != method && defaultMethod == "" && m != defaultMethod {
+	if m != wantMethod {
+		logger.Trace().
+			Str("method", wantMethod).
+			Msg("Method mismatch")
 		return false, nil
 	}
 
@@ -384,8 +406,6 @@ func (f *MallebaleRule) verifyURI(
 	uris malleable.URIs,
 	transforms []malleable.Function,
 ) (bool, error) {
-	var found bool
-
 	url, err := e.GetURL()
 	if err != nil {
 		return false, fmt.Errorf("can't get url: %w", err)
@@ -396,19 +416,24 @@ func (f *MallebaleRule) verifyURI(
 		hasAppended := strings.HasPrefix(url.Path, uri) && transforms != nil
 		onlyURI := uri == url.Path && transforms == nil
 
-		if onlyURI || hasAppended {
-			found = true
-			if hasAppended {
-				found = f.verifyDecoding(
-					[]byte(url.Path[len(uri):]),
-					logger,
-					transforms,
-				)
-			}
+		if onlyURI {
+			return true, nil
+		}
+		if hasAppended {
+			found := f.verifyDecoding(
+				[]byte(url.Path[len(uri):]),
+				logger,
+				transforms,
+			)
 			if found {
 				return true, nil
 			}
+			logger.Trace().Str("uri", url.Path).Msg("Can't decode URI")
 		}
+	}
+
+	if transforms == nil {
+		logger.Trace().Any("uris", uris).Msg("URI mismatch")
 	}
 
 	return false, nil
@@ -428,6 +453,14 @@ func (f *MallebaleRule) verifyParameters(
 	v := url.Query()
 	for _, param := range parameters {
 		if v.Get(param.Name) != param.Value {
+			logger.Trace().
+				Dict(
+					"parameter",
+					zerolog.Dict().
+						Str("key", param.Name).
+						Str("value", param.Value),
+				).
+				Msg("Query parameter mismatch")
 			return false, nil
 		}
 	}
@@ -435,7 +468,19 @@ func (f *MallebaleRule) verifyParameters(
 	// if metadata in param
 	if transforms != nil {
 		p := transforms[len(transforms)-1].Args[0]
-		return f.verifyDecoding([]byte(v.Get(p)), logger, transforms), nil
+		v := v.Get(p)
+		found := f.verifyDecoding([]byte(v), logger, transforms)
+		if !found {
+			logger.Trace().
+				Dict(
+					"parameter",
+					zerolog.Dict().
+						Str("key", p).
+						Str("value", v),
+				).
+				Msg("Can't decode query parameter")
+		}
+		return found, nil
 	}
 
 	return true, nil
@@ -453,10 +498,19 @@ func (f *MallebaleRule) verifyHeaders(
 	}
 
 	for _, h := range pheaders {
-		header, ok := headers[http.CanonicalHeaderKey(h.Name)]
+		canonical := http.CanonicalHeaderKey(h.Name)
+		header, ok := headers[canonical]
 		if !ok || !slices.ContainsFunc(header, func(e string) bool {
 			return strings.EqualFold(e, h.Value)
 		}) {
+			logger.Trace().
+				Dict(
+					"header",
+					zerolog.Dict().
+						Str("key", canonical).
+						Str("value", h.Value),
+				).
+				Msg("Header mismatch")
 			return false, nil
 		}
 	}
@@ -464,15 +518,23 @@ func (f *MallebaleRule) verifyHeaders(
 	// if metadata in header
 	if transforms != nil {
 		h := transforms[len(transforms)-1].Args[0]
-		header, ok := headers[h]
+		va, ok := headers[h]
 		if ok {
-			for _, h := range header {
-				found := f.verifyDecoding([]byte(h), logger, transforms)
+			for _, v := range va {
+				found := f.verifyDecoding([]byte(v), logger, transforms)
 				if found {
 					return true, nil
 				}
 			}
 		}
+		logger.Trace().
+			Dict(
+				"header",
+				zerolog.Dict().
+					Str("key", h).
+					Any("value", va),
+			).
+			Msg("Can't decode header")
 		return false, nil
 	}
 
@@ -488,7 +550,13 @@ func (f *MallebaleRule) verifyBody(
 	if err != nil {
 		return false, fmt.Errorf("can't get body: %w", err)
 	}
-	return f.verifyDecoding(body, logger, transforms), nil
+	found := f.verifyDecoding(body, logger, transforms)
+	if !found {
+		logger.Trace().
+			Bytes("body", body).
+			Msg("Can't decode body")
+	}
+	return found, nil
 }
 
 func (f *MallebaleRule) verifyStagerURL(e wrapper.Entity) (bool, error) {
@@ -519,34 +587,54 @@ func (f *MallebaleRule) verifyDecoding(
 		switch t.Func {
 		case "append":
 			if !(len(t.Args) == 1 && bytes.HasSuffix(d, []byte(t.Args[0]))) {
+				logger.Trace().
+					Str("func", t.Func).
+					Str("arg", t.Args[0]).
+					Msg("Can't decode")
 				return false
 			}
 			d = d[:len(d)-len(t.Args[0])]
 		case "prepend":
 			if !(len(t.Args) == 1 && bytes.HasPrefix(d, []byte(t.Args[0]))) {
+				logger.Trace().
+					Str("func", t.Func).
+					Str("arg", t.Args[0]).
+					Msg("Can't decode")
 				return false
 			}
 			d = d[len(t.Args[0]):]
 		case "base64":
 			n, err = base64.StdEncoding.Decode(d, d)
 			if err != nil {
+				logger.Trace().
+					Str("func", t.Func).
+					Msg("Can't decode")
 				return false
 			}
 			d = d[:n]
 		case "base64url":
 			n, err = base64.RawURLEncoding.Decode(d, d)
 			if err != nil {
+				logger.Trace().
+					Str("func", t.Func).
+					Msg("Can't decode")
 				return false
 			}
 			d = d[:n]
 		case "mask":
 			if len(d) < 5 { //nolint:gomnd // 4 byte key + atleast 1 byte data
+				logger.Trace().
+					Str("func", t.Func).
+					Msg("Can't decode")
 				return false
 			}
 			d = xorDecrypt(d[:4], d[4:])
 		case "netbios", "netbiosu":
 			d, err = netbiosDecode(d, t.Func == "netbios")
 			if err != nil {
+				logger.Trace().
+					Str("func", t.Func).
+					Msg("Can't decode")
 				return false
 			}
 		default:

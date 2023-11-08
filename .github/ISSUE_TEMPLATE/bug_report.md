@@ -29,7 +29,7 @@ v\*.\*.\*
 
 **Verbose logging output**
 ```
-...logs here...
+...logs with trace verbosity here (with -vv flag)...
 ```
 
 **Additional context**
