@@ -1,13 +1,3 @@
-# private ip adresses
-10.0.0.0/8
-172.16.0.0/12
-192.168.0.0/16
-fd00::/8
-
-# link-local adresses
-169.254.0.0/16
-fe80::/10
-
-# loopback adresses
-127.0.0.0/8
-::1
+version https://git-lfs.github.com/spec/v1
+oid sha256:d248b9ddd867953c8537b6de13708a73c7113387e4c3416510ada97deee1bb1e
+size 156

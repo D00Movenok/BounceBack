@@ -3,7 +3,7 @@ testdata_dir = "test/testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = ["-v", "-c", "config.yml"]
+  args_bin = ["-vv", "-c", "config.yml"]
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main cmd/bounceback/main.go"
   delay = 1000

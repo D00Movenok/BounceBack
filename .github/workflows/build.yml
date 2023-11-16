@@ -16,10 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          lfs: true
           fetch-depth: 0
 
       - name: Fetch tags
         run: git fetch --force --tags
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
 
       - name: Install UPX
         uses: crazy-max/ghaction-upx@v2
