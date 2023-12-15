@@ -295,7 +295,7 @@ func (f *MallebaleRule) verifyHTTPProfile(
 	logger zerolog.Logger,
 	method string,
 	defaultMethod string,
-	uri malleable.URIs,
+	uri malleable.SpaceSeparatedList,
 	parameters []malleable.Parameter,
 	headers []malleable.Header,
 	transforms [][]malleable.Function,
@@ -403,7 +403,7 @@ func (f *MallebaleRule) verifyMethod(
 func (f *MallebaleRule) verifyURI(
 	e wrapper.Entity,
 	logger zerolog.Logger,
-	uris malleable.URIs,
+	uris malleable.SpaceSeparatedList,
 	transforms []malleable.Function,
 ) (bool, error) {
 	url, err := e.GetURL()

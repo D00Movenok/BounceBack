@@ -62,7 +62,7 @@ Proxies configuration page may be found [here](https://github.com/D00Movenok/Bou
 
 Just download latest release from [release page](https://github.com/D00Movenok/BounceBack/releases), unzip it, edit config file and go on.
 
-If you want to build it from source, [install goreleaser](https://goreleaser.com/install/) and run:
+If you want to build it from source, clone it (don't forget about [GitLFS](https://git-lfs.com/)), [install goreleaser](https://goreleaser.com/install/) and run:
 
 ```bash
 goreleaser release --clean --snapshot
