@@ -28,7 +28,6 @@ builds:
 archives:
   - id: "bounceback"
     format: zip
-    rlcp: true
     builds:
       - "bounceback"
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"

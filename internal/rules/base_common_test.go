@@ -483,6 +483,25 @@ func TestBase_IPRule(t *testing.T) {
 				applyErr:   false,
 			},
 		},
+		{
+			"subnet and ip overlaps",
+			args{
+				ip: "2.2.0.1",
+				cfg: common.RuleConfig{
+					Name: "test",
+					Type: "ip",
+					Params: map[string]any{
+						"list": "../../test/testdata/ip_lists/allowlist_overlaps.txt",
+					},
+				},
+			},
+			want{
+				res:        true,
+				createErr:  false,
+				prepareErr: false,
+				applyErr:   false,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

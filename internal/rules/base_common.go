@@ -83,24 +83,23 @@ func NewIPRule(
 		line := s.Text()
 		line, _, _ = strings.Cut(line, "#") // remove comment
 		line = strings.TrimSpace(line)      // trim spaces
-		isSubnet := strings.Contains(line, "/")
-		if isSubnet {
+		if line != "" {
+			ip, err = netip.ParseAddr(line)
+			if err == nil {
+				if ip.Is4() {
+					line += "/32"
+				} else {
+					line += "/128"
+				}
+			}
+
 			subnet, err = netip.ParsePrefix(line)
 			rule.subnetBanlist = append(rule.subnetBanlist, subnet)
-		} else if line != "" {
-			ip, err = netip.ParseAddr(line)
-			rule.ipBanlist = append(rule.ipBanlist, ip)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("can't parse ip/subnet: %w", err)
 		}
 	}
-
-	// sort and remove equal elements for ipBanlist
-	slices.SortFunc(rule.ipBanlist, func(e1 netip.Addr, e2 netip.Addr) int {
-		return e1.Compare(e2)
-	})
-	rule.ipBanlist = slices.Compact(rule.ipBanlist)
 
 	// sort and remove equal elements for subnetBanlist
 	// TODO: update with compare func when it will be added
@@ -340,7 +339,6 @@ type IPRuleParams struct {
 type IPRule struct {
 	path          string
 	subnetBanlist []netip.Prefix
-	ipBanlist     []netip.Addr
 }
 
 func (f *IPRule) Prepare(
@@ -371,19 +369,6 @@ func (f *IPRule) Apply(
 	)
 	if found {
 		logger.Debug().Stringer("match", f.subnetBanlist[i]).Msg("Subnet match")
-		return true, nil
-	}
-
-	// search ip in ipBanlist
-	i, found = slices.BinarySearchFunc(
-		f.ipBanlist,
-		ip,
-		func(e1 netip.Addr, e2 netip.Addr) int {
-			return e1.Compare(e2)
-		},
-	)
-	if found {
-		logger.Debug().Stringer("match", f.ipBanlist[i]).Msg("IP match")
 		return true, nil
 	}
 

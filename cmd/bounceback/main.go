@@ -147,7 +147,7 @@ func createKeyValueStorage() *database.DB {
 
 func parseProxyConfig() *common.Config {
 	cfg := new(common.Config)
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := viper.Unmarshal(cfg); err != nil {
 		log.Fatal().Err(err).Msg("Can't parse proxy config from file")
 	}
 	return cfg
