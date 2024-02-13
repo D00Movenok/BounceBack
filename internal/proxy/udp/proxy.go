@@ -101,7 +101,7 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 
 	done := make(chan interface{}, 1)
 	go func() {
-		p.connMap.Range(func(key, value any) bool {
+		p.connMap.Range(func(_, value any) bool {
 			c, _ := value.(*Connection)
 			c.Close()
 			return true

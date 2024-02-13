@@ -34,6 +34,7 @@ archives:
     wrap_in_directory: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - data/
+      - scripts/
       - LICENSE
       - README.md
       - config.yml

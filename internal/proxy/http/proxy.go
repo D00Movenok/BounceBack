@@ -61,8 +61,8 @@ func NewProxy(
 		client: &http.Client{
 			Timeout: baseProxy.Config.Timeout,
 			CheckRedirect: func(
-				req *http.Request,
-				via []*http.Request,
+				_ *http.Request,
+				_ []*http.Request,
 			) error {
 				return http.ErrUseLastResponse
 			},

@@ -1,10 +1,16 @@
 #!/bin/bash
 
 ipRegex="((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/[0-9]?[0-9])?)";
+
 curl https://gist.githubusercontent.com/curi0usJack/971385e8334e189d93a6cb4671238b10/raw | awk '/BURN AV BURN/ {seen = 1} seen {print}' | grep -oE "(^\s$)|(#.*)|${ipRegex}";
 
 echo -e "\n# TOR exit nodes (https://github.com/SecOps-Institute/Tor-IP-Addresses/)";
 curl https://raw.githubusercontent.com/SecOps-Institute/Tor-IP-Addresses/master/tor-exit-nodes.lst;
+
+echo -e "\n# Public proxy list (https://github.com/TheSpeedX/PROXY-List)"
+curl https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/socks5.txt | grep -oE "(^\s$)|(#.*)|${ipRegex}";
+curl https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/socks4.txt | grep -oE "(^\s$)|(#.*)|${ipRegex}";
+curl https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/http.txt | grep -oE "(^\s$)|(#.*)|${ipRegex}";
 
 echo -e "\n# SPAMHAUS (https://github.com/SecOps-Institute/SpamhausIPLists/)";
 curl https://raw.githubusercontent.com/SecOps-Institute/SpamhausIPLists/master/drop.txt;

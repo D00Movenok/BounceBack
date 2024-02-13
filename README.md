@@ -32,7 +32,7 @@ For more information on tool usage, you may visit [project's wiki](https://githu
 
 ## Rules
 
-BounceBack currently supports the following filters:
+The main idea of rules is how BounceBack matches traffic. The tool currently supports the following rule types:
 
 * Boolean-based (and, or, not) rules combinations
 * IP and subnet analysis
@@ -48,7 +48,7 @@ Rules configuration page may be found [here](https://github.com/D00Movenok/Bounc
 
 ## Proxies
 
-At the moment, BounceBack supports the following protocols:
+The proxies section is used to configure where to listen and proxy traffic, which protocol to use and how to chain rules together for traffic filtering. At the moment, BounceBack supports the following protocols:
 
 * HTTP(s) for your web infrastructure
 * DNS for your DNS tunnels
@@ -67,3 +67,24 @@ If you want to build it from source, clone it (don't forget about [GitLFS](https
 ```bash
 goreleaser release --clean --snapshot
 ```
+
+## Usage
+
+1. **(Optionally)** Update `banned_ips.txt` list:
+
+    ```bash
+    bash scripts/collect_banned_ips.sh > data/banned_ips.txt
+    ```
+
+2. Modify `config.yml` for your needs. Configure [rules](https://github.com/D00Movenok/BounceBack/wiki/1.-Rules) to match traffic, [proxies](https://github.com/D00Movenok/BounceBack/wiki/2.-Proxies) to analyze traffic using rules and [globals](https://github.com/D00Movenok/BounceBack/wiki/3.-Globals) for deep rules configuration.
+
+3. Run BounceBack:
+
+    ```bash
+    ./bounceback
+    ```
+
+    > Usage of BounceBack: \
+    > -c, --config string   Path to the config file in YAML format (default "config.yml") \
+    > -l, --log string      Path to the log file (default "bounceback.log") \
+    > -v, --verbose count   Verbose logging (0 = info, 1 = debug, 2+ = trace)
