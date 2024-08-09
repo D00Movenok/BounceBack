@@ -76,10 +76,9 @@ func NewBaseProxy(
 
 	if len(cfg.TLS) > 0 {
 		var (
-			nameToCerts  = map[string]*tls.Certificate{}
-			unnamedCerts []tls.Certificate
-			cert         tls.Certificate
-			leaf         *x509.Certificate
+			certs []tls.Certificate
+			cert  tls.Certificate
+			leaf  *x509.Certificate
 		)
 
 		for _, t := range cfg.TLS {
@@ -94,28 +93,24 @@ func NewBaseProxy(
 			}
 			cert.Leaf = leaf
 
-			if t.Domain != "" {
-				logger.Debug().
-					Str("cert", t.Cert).
-					Str("key", t.Key).
-					Str("domain", t.Domain).
-					Time("valid", cert.Leaf.NotAfter).
-					Msg("Loaded scoped certificate")
-				nameToCerts[t.Domain] = &cert
-			} else {
-				logger.Debug().
-					Str("cert", t.Cert).
-					Str("key", t.Key).
-					Time("valid", cert.Leaf.NotAfter).
-					Msg("Loaded certificate")
-				unnamedCerts = append(unnamedCerts, cert)
+			if len(t.Domains) > 0 {
+				cert.Leaf.DNSNames = t.Domains
 			}
+
+			logger.Debug().
+				Str("cert", t.Cert).
+				Str("key", t.Key).
+				Any("domains", cert.Leaf.DNSNames).
+				Time("valid", cert.Leaf.NotAfter).
+				Bool("default", len(certs) == 0).
+				Msg("Loaded TLS certificate")
+
+			certs = append(certs, cert)
 		}
 
 		//nolint: gosec // ignore tls min version
 		base.TLSConfig = &tls.Config{
-			Certificates:       unnamedCerts,
-			NameToCertificate:  nameToCerts,
+			Certificates:       certs,
 			InsecureSkipVerify: true, // for selfsigned tls client certs
 		}
 	}

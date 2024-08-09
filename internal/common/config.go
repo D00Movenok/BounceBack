@@ -21,9 +21,9 @@ type RuleConfig struct {
 }
 
 type TLS struct {
-	Cert   string `mapstructure:"cert"`
-	Key    string `mapstructure:"key"`
-	Domain string `mapstructure:"domain"`
+	Cert    string   `mapstructure:"cert"`
+	Key     string   `mapstructure:"key"`
+	Domains []string `mapstructure:"domains"`
 }
 
 type RuleSettings struct {
