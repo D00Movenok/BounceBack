@@ -198,8 +198,7 @@ func (p *Proxy) handleConnection(src net.Conn) {
 		dst, err = tls.Dial(
 			"tcp",
 			p.TargetURL.String(),
-			//nolint: gosec // selfsigned support
-			&tls.Config{InsecureSkipVerify: true},
+			p.TLSConfig,
 		)
 	} else {
 		dst, err = net.Dial("tcp", p.TargetURL.String())
