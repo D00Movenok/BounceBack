@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -83,6 +84,15 @@ func NewProxy(
 			ForceAttemptHTTP2: true,
 		}
 		p.server.TLSConfig = p.TLSConfig
+	}
+
+	// TODO: Remove next when HTTP2 will support Drop
+	// https://github.com/golang/go/issues/34874
+	if cfg.RuleSettings.RejectAction == common.RejectActionDrop {
+		p.Logger.Warn().Msg("HTTP2 disabled with action \"drop\"")
+		p.server.TLSNextProto = make(
+			map[string]func(*http.Server, *tls.Conn, http.Handler),
+		)
 	}
 
 	return p, nil
@@ -182,7 +192,14 @@ func (p *Proxy) processVerdict(
 	case common.RejectActionRedirect:
 		http.Redirect(w, r, p.ActionURL.String(), http.StatusMovedPermanently)
 	case common.RejectActionDrop:
-		hj, _ := w.(http.Hijacker)
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			// TODO: Add support for HTTP2 Hijacker
+			// https://github.com/golang/go/issues/34874
+			logger.Warn().Msg("Response writer does not support http.Hijacker")
+			handleError(w)
+			return
+		}
 		conn, _, err := hj.Hijack()
 		if err != nil {
 			logger.Error().Err(err).Msg("Can't hijack response")

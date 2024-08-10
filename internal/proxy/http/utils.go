@@ -24,11 +24,11 @@ func logRequest(e wrapper.Entity, logger zerolog.Logger) {
 		Stringer("url", u).
 		Any("user-agent", ua)
 
-	if logger.GetLevel() == zerolog.DebugLevel {
+	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
 		ev = ev.Any("headers", h)
 	}
 
-	if logger.GetLevel() == zerolog.TraceLevel {
+	if zerolog.GlobalLevel() <= zerolog.TraceLevel {
 		ev = ev.Bytes("body", b)
 	}
 
