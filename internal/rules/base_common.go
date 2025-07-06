@@ -5,10 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/netip"
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -23,8 +25,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 func NewRegexpRule(
@@ -159,7 +159,7 @@ func NewTimeRule(
 	)
 
 	if len(params.Weekdays) == 0 {
-		days = maps.Values(daysOfWeek)
+		days = slices.Collect(maps.Values(daysOfWeek))
 	} else {
 		for _, v := range params.Weekdays {
 			d, ok := daysOfWeek[v]
@@ -238,9 +238,13 @@ func NewGeolocationRule(
 		// iterate all fields of params.Geolocations,
 		// converts them to regexps and put to gr
 		g := reflect.ValueOf(gc)
-		for i := 0; i < g.NumField(); i++ {
+		for i := range g.NumField() {
 			fn := g.Type().Field(i).Name
-			for _, sre := range g.FieldByName(fn).Interface().([]string) {
+			f, ok := g.FieldByName(fn).Interface().([]string)
+			if !ok {
+				return nil, fmt.Errorf("field %s not found", fn)
+			}
+			for _, sre := range f {
 				re, err = regexp.Compile(sre)
 				if err != nil {
 					return nil, fmt.Errorf("can't compile regexp: %w", err)
@@ -311,7 +315,7 @@ func (f *RegexpRule) Prepare(
 	return nil
 }
 
-func (f RegexpRule) Apply(
+func (f *RegexpRule) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -328,7 +332,7 @@ func (f RegexpRule) Apply(
 	return false, nil
 }
 
-func (f RegexpRule) String() string {
+func (f *RegexpRule) String() string {
 	return fmt.Sprintf("Regexp(list=%s)", f.path)
 }
 
@@ -540,7 +544,7 @@ func (f *GeoRule) getGeoInfoByEntity(
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		time.Second*5, //nolint:gomnd
+		time.Second*5, //nolint:mnd
 	)
 	defer cancel()
 
@@ -569,8 +573,8 @@ func (f *GeoRule) getGeoInfoByEntity(
 	case 1:
 		var g *ipapicom.Location
 		g, err = f.ipapicom.GetLocationForIP(ctx, ip)
-		if err != nil && !(errors.Is(err, ipapicom.ErrReservedRange) ||
-			errors.Is(err, ipapicom.ErrPrivateRange)) {
+		if err != nil && !errors.Is(err, ipapicom.ErrReservedRange) &&
+			!errors.Is(err, ipapicom.ErrPrivateRange) {
 			return nil, fmt.Errorf(
 				"can't get geolocation with ip-api.com: %w",
 				err,
@@ -608,7 +612,7 @@ func (f *GeoRule) findByRegexp(
 
 	// iterate fields and match "list" regexps on them
 	gs := reflect.ValueOf(geo).Elem()
-	for i := 0; i < gs.NumField(); i++ {
+	for i := range gs.NumField() {
 		gv := gs.Field(i)
 		if gv.Len() == 0 {
 			continue
@@ -643,7 +647,7 @@ func (f *GeoRule) findByGeoRegexp(
 	var found bool
 	// iterate field regexps and apply them on fields
 	grs := reflect.ValueOf(gr).Elem()
-	for i := 0; i < grs.NumField(); i++ {
+	for i := range grs.NumField() {
 		fn := grs.Type().Field(i).Name
 		gv := reflect.ValueOf(geo).Elem().FieldByName(fn)
 		regexps, _ := grs.FieldByName(fn).Interface().([]*regexp.Regexp)

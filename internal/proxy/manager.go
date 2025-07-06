@@ -17,6 +17,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type Manager struct {
+	proxies []Proxy
+}
+
 func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 	rs, err := rules.NewRuleSet(db, cfg.Rules, cfg.Globals)
 	if err != nil {
@@ -52,24 +56,22 @@ func NewManager(db *database.DB, cfg *common.Config) (*Manager, error) {
 	return m, nil
 }
 
-type Manager struct {
-	proxies []Proxy
-}
-
 func (m *Manager) StartAll() error {
 	for i, p := range m.proxies {
 		p.GetLogger().Info().Msg("Starting proxy")
-		if err := p.Start(); err != nil {
+		err := p.Start()
+		if err != nil {
 			ctx, cancel := context.WithTimeout(
 				context.Background(),
-				time.Second*5, //nolint:gomnd
+				time.Second*5, //nolint:mnd
 			)
 			defer cancel()
-			for j := 0; j < i; j++ {
-				if serr := m.proxies[j].Shutdown(ctx); serr != nil {
+			for _, rp := range m.proxies[:i] {
+				serr := rp.Shutdown(ctx)
+				if serr != nil {
 					log.Error().Err(serr).Msgf(
 						"Error shutting down %s forcefully",
-						m.proxies[j],
+						rp,
 					)
 				}
 			}
@@ -87,7 +89,8 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 		p.GetLogger().Info().Msg("Shutting down proxy")
 		go func(p Proxy) {
 			defer wg.Done()
-			if err := p.Shutdown(ctx); err != nil {
+			err := p.Shutdown(ctx)
+			if err != nil {
 				select {
 				case errCh <- fmt.Errorf("can't shutdown \"%s\": %w", p, err):
 				default:

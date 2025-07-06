@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
@@ -16,7 +17,6 @@ import (
 	malleable "github.com/D00Movenok/goMalleable"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
-	"golang.org/x/exp/slices"
 )
 
 // TODO: add unit tests for malleable rule.
@@ -586,7 +586,7 @@ func (f *MallebaleRule) verifyDecoding(
 		t := t[i]
 		switch t.Func {
 		case "append":
-			if !(len(t.Args) == 1 && bytes.HasSuffix(d, []byte(t.Args[0]))) {
+			if len(t.Args) != 1 || !bytes.HasSuffix(d, []byte(t.Args[0])) {
 				logger.Trace().
 					Str("func", t.Func).
 					Str("arg", t.Args[0]).
@@ -595,7 +595,7 @@ func (f *MallebaleRule) verifyDecoding(
 			}
 			d = d[:len(d)-len(t.Args[0])]
 		case "prepend":
-			if !(len(t.Args) == 1 && bytes.HasPrefix(d, []byte(t.Args[0]))) {
+			if len(t.Args) != 1 || !bytes.HasPrefix(d, []byte(t.Args[0])) {
 				logger.Trace().
 					Str("func", t.Func).
 					Str("arg", t.Args[0]).
@@ -622,7 +622,7 @@ func (f *MallebaleRule) verifyDecoding(
 			}
 			d = d[:n]
 		case "mask":
-			if len(d) < 5 { //nolint:gomnd // 4 byte key + atleast 1 byte data
+			if len(d) < 5 { //nolint:mnd // 4 byte key + atleast 1 byte data
 				logger.Trace().
 					Str("func", t.Func).
 					Msg("Can't decode")

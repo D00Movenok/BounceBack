@@ -17,10 +17,10 @@ type Client interface {
 	GetLocationForIP(ctx context.Context, ip string) (*Location, error)
 }
 
-// Primary URL.
+// StandardURL is the primary URL.
 const StandardURL = "http://ip-api.com"
 
-// Pro URL.
+// ProURL is the pro URL for api key.
 const ProURL = "https://pro.ip-api.com"
 
 func NewClient() Client {

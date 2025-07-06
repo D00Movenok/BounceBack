@@ -23,7 +23,7 @@ func NewCompositeAndRule(
 		return nil, fmt.Errorf("can't decode params: %w", err)
 	}
 
-	if len(params.Rules) < 2 { //nolint:gomnd
+	if len(params.Rules) < 2 { //nolint:mnd
 		return nil, ErrInvalidRuleArgs
 	}
 
@@ -51,7 +51,7 @@ func NewCompositeOrRule(
 		return nil, fmt.Errorf("can't decode params: %w", err)
 	}
 
-	if len(params.Rules) < 2 { //nolint:gomnd
+	if len(params.Rules) < 2 { //nolint:mnd
 		return nil, ErrInvalidRuleArgs
 	}
 

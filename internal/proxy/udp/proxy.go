@@ -31,6 +31,15 @@ var (
 	}
 )
 
+type Proxy struct {
+	*base.Proxy
+
+	TargetURL netip.AddrPort
+
+	connMap  sync.Map
+	listener *net.UDPConn
+}
+
 func NewProxy(
 	cfg common.ProxyConfig,
 	rs *rules.RuleSet,
@@ -56,15 +65,6 @@ func NewProxy(
 	p.TargetURL = ap
 
 	return p, nil
-}
-
-type Proxy struct {
-	*base.Proxy
-
-	TargetURL netip.AddrPort
-
-	connMap  sync.Map
-	listener *net.UDPConn
 }
 
 func (p *Proxy) Start() error {
@@ -95,7 +95,8 @@ func (p *Proxy) Start() error {
 
 func (p *Proxy) Shutdown(ctx context.Context) error {
 	p.Closing = true
-	if err := p.listener.Close(); err != nil {
+	err := p.listener.Close()
+	if err != nil {
 		return fmt.Errorf("can't close listener: %w", err)
 	}
 
@@ -103,7 +104,7 @@ func (p *Proxy) Shutdown(ctx context.Context) error {
 	go func() {
 		p.connMap.Range(func(_, value any) bool {
 			c, _ := value.(*Connection)
-			c.Close()
+			c.Close() //nolint:gosec // does not matter if error occurs
 			return true
 		})
 		p.WG.Wait()
@@ -126,7 +127,7 @@ func (p *Proxy) processVerdict(
 ) bool {
 	switch p.Config.RuleSettings.RejectAction {
 	case common.RejectActionDrop:
-		c.Close()
+		c.Close() //nolint:gosec // does not matter if error occurs
 		p.connMap.Delete(c.String())
 		return true
 	default:
@@ -140,7 +141,7 @@ func (p *Proxy) replyLoop(
 	logger zerolog.Logger,
 ) {
 	defer func() {
-		c.Close()
+		c.Close() //nolint:gosec // does not matter if error occurs
 		p.connMap.Delete(c.String())
 		p.WG.Done()
 	}()

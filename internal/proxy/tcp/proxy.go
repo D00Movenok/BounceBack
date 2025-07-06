@@ -32,6 +32,15 @@ var (
 	}
 )
 
+type Proxy struct {
+	*base.Proxy
+
+	IsTLS     bool
+	TargetURL netip.AddrPort
+
+	listener net.Listener
+}
+
 func NewProxy(
 	cfg common.ProxyConfig,
 	rs *rules.RuleSet,
@@ -63,15 +72,6 @@ func NewProxy(
 	return p, nil
 }
 
-type Proxy struct {
-	*base.Proxy
-
-	IsTLS     bool
-	TargetURL netip.AddrPort
-
-	listener net.Listener
-}
-
 func (p *Proxy) Start() error {
 	var err error
 	if p.TLSConfig != nil {
@@ -90,7 +90,8 @@ func (p *Proxy) Start() error {
 
 func (p *Proxy) Shutdown(ctx context.Context) error {
 	p.Closing = true
-	if err := p.listener.Close(); err != nil {
+	err := p.listener.Close()
+	if err != nil {
 		return fmt.Errorf("can't close listener: %w", err)
 	}
 
@@ -116,7 +117,7 @@ func (p *Proxy) processVerdict(
 ) bool {
 	switch p.Config.RuleSettings.RejectAction {
 	case common.RejectActionDrop:
-		src.Close()
+		src.Close() //nolint:gosec // does not matter if error occurs
 		return true
 	default:
 		logger.Warn().Msg("Request was filtered, but action is none")
@@ -215,23 +216,24 @@ func (p *Proxy) handleConnection(src net.Conn) {
 		ingress bool,
 	) {
 		defer wg.Done()
-		if err = p.oneSideHandler(
+		err = p.oneSideHandler(
 			e,
 			src,
 			dst,
 			logger,
 			ingress,
-		); err != nil && !base.IsConnectionClosed(err) {
+		)
+		if err != nil && !base.IsConnectionClosed(err) {
 			logger.Error().Err(err).Msg("Connection error")
 		}
 
 		// if not close both, ne side will wait until timeout
-		src.Close()
-		dst.Close()
+		src.Close() //nolint:gosec // does not matter if error occurs
+		dst.Close() //nolint:gosec // does not matter if error occurs
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(2) //nolint:gomnd // two connections
+	wg.Add(2) //nolint:mnd // two connections
 	go handler(src, dst, &wg, true)
 	go handler(dst, src, &wg, false)
 	wg.Wait()

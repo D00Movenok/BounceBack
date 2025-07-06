@@ -17,7 +17,7 @@ type Client interface {
 	GetLocationForIP(ctx context.Context, ip string) (*Location, error)
 }
 
-// Primary URL.
+// StandardURL is the primary URL.
 const StandardURL = "https://ipapi.co"
 
 func NewClient() Client {

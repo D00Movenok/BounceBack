@@ -16,6 +16,7 @@ import (
 
 type MockRule struct {
 	mock.Mock
+
 	res    bool
 	err    error
 	called bool

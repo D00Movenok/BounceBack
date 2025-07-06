@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -13,12 +14,23 @@ import (
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
 )
 
 const (
 	defaultTimeout = time.Second * 10
 )
+
+type Proxy struct {
+	Config    common.ProxyConfig
+	TLSConfig *tls.Config
+
+	Closing bool
+	WG      sync.WaitGroup
+	Logger  zerolog.Logger
+
+	db    *database.DB
+	rules *rules.RuleSet
+}
 
 func NewBaseProxy(
 	cfg common.ProxyConfig,
@@ -118,18 +130,6 @@ func NewBaseProxy(
 	return base, nil
 }
 
-type Proxy struct {
-	Config    common.ProxyConfig
-	TLSConfig *tls.Config
-
-	Closing bool
-	WG      sync.WaitGroup
-	Logger  zerolog.Logger
-
-	db    *database.DB
-	rules *rules.RuleSet
-}
-
 func (p *Proxy) GetLogger() *zerolog.Logger {
 	logger := p.Logger.With().
 		Str("listen", p.Config.ListenAddr).
@@ -139,7 +139,7 @@ func (p *Proxy) GetLogger() *zerolog.Logger {
 	return &logger
 }
 
-// Return true if entity passed all checks and false if filtered.
+// RunFilters return true if entity passed all checks and false if filtered.
 func (p *Proxy) RunFilters(e wrapper.Entity, logger zerolog.Logger) bool {
 	ip := e.GetIP().String()
 

@@ -76,7 +76,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		time.Second*5, //nolint:gomnd
+		time.Second*5, //nolint:mnd
 	)
 	defer cancel()
 
@@ -87,7 +87,7 @@ func main() {
 
 func initPflag() {
 	pflag.ErrHelp = errors.New("") //nolint:reassign // remove error from output
-	pflag.Usage = func() {
+	pflag.Usage = func() {         //nolint:reassign // nice help message
 		fmt.Fprintln(os.Stdout, "Usage of BounceBack:")
 		pflag.PrintDefaults()
 	}
@@ -95,7 +95,7 @@ func initPflag() {
 }
 
 func initLogger() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix //nolint:reassign // default time formatting
 
 	fileWriter, err := os.OpenFile(
 		*logFile,
@@ -110,7 +110,12 @@ func initLogger() {
 		TimeFormat: time.RFC3339,
 	}
 
-	log.Logger = log.Output(zerolog.MultiLevelWriter(consoleWriter, fileWriter))
+	log.Logger = log.Output( //nolint:reassign // default logger
+		zerolog.MultiLevelWriter(
+			consoleWriter,
+			fileWriter,
+		),
+	)
 }
 
 func setLogLevel() {
@@ -131,7 +136,8 @@ func setLogLevel() {
 func parseConfig() {
 	viper.SetConfigFile(*configFile)
 	viper.SetConfigType("yaml")
-	if err := viper.ReadInConfig(); err != nil {
+	err := viper.ReadInConfig()
+	if err != nil {
 		log.Fatal().Err(err).Msg("Can't read config from yaml")
 	}
 }
@@ -147,7 +153,8 @@ func createKeyValueStorage() *database.DB {
 
 func parseProxyConfig() *common.Config {
 	cfg := new(common.Config)
-	if err := viper.Unmarshal(cfg); err != nil {
+	err := viper.Unmarshal(cfg)
+	if err != nil {
 		log.Fatal().Err(err).Msg("Can't parse proxy config from file")
 	}
 	return cfg
@@ -159,15 +166,19 @@ func runProxyManager(db *database.DB, cfg *common.Config) *proxy.Manager {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Can't create proxy manager")
 	}
-	if err = m.StartAll(); err != nil {
+
+	err = m.StartAll()
+	if err != nil {
 		log.Fatal().Err(err).Msg("Can't start proxies")
 	}
+
 	return m
 }
 
 func shutdownProxyManager(ctx context.Context, m *proxy.Manager) {
 	log.Info().Msg("Shutting down proxies")
-	if err := m.Shutdown(ctx); err != nil {
+	err := m.Shutdown(ctx)
+	if err != nil {
 		log.Fatal().Err(err).Msg("Can't shutdown proxies")
 	}
 }

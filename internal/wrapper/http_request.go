@@ -84,7 +84,8 @@ func (r *HTTPRequest) GetMethod() (string, error) {
 }
 
 func (r *HTTPRequest) resetBody() {
-	if err := r.Request.Body.Close(); err != nil {
+	err := r.Request.Body.Close()
+	if err != nil {
 		log.Error().Err(err).Msg("Can't reset request body")
 	}
 }

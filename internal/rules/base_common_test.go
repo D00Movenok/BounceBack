@@ -1171,7 +1171,7 @@ func TestBase_GeoRule(t *testing.T) {
 
 			if !tt.want.createErr {
 				const geolocationInfoCount = 2
-				for i := 0; i < geolocationInfoCount; i++ {
+				for range geolocationInfoCount {
 					e := new(MockEntity)
 					e.On("GetIP").Return(netip.MustParseAddr(tt.args.ip))
 

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"slices"
 	"strings"
 
 	"github.com/D00Movenok/BounceBack/internal/common"
-	"golang.org/x/exp/slices"
 )
 
 type ActionNotAllowedError struct {
