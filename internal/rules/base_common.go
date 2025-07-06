@@ -566,6 +566,7 @@ func (f *GeoRule) getGeoInfoByEntity(
 			f.apicounter.Inc()
 			continue
 		}
+		break
 	}
 	if geo == nil {
 		return nil, fmt.Errorf(
