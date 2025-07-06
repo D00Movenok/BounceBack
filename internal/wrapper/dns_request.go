@@ -20,7 +20,7 @@ func (r *DNSRequest) GetIP() netip.Addr {
 	return r.From
 }
 
-// Return all questions in format:
+// GetRaw return all questions in format:
 // REQ_TYPE1 DOMAIN_NAME1
 // REQ_TYPE2 DOMAIN_NAME2
 // ...

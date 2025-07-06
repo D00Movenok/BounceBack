@@ -11,10 +11,15 @@ func WrapHTTPBody(body io.ReadCloser) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't create reader: %w", err)
 	}
-	if err = body.Close(); err != nil {
+	err = body.Close()
+	if err != nil {
 		return nil, fmt.Errorf("can't close original body: %w", err)
 	}
 	return w, nil
+}
+
+type BodyReader struct {
+	b *bytes.Reader
 }
 
 func NewBodyReader(r io.Reader) (*BodyReader, error) {
@@ -26,10 +31,6 @@ func NewBodyReader(r io.Reader) (*BodyReader, error) {
 	return br, nil
 }
 
-type BodyReader struct {
-	b *bytes.Reader
-}
-
 func (r *BodyReader) Read(b []byte) (int, error) {
 	n, err := r.b.Read(b)
 	if err != nil && err != io.EOF {
@@ -39,7 +40,8 @@ func (r *BodyReader) Read(b []byte) (int, error) {
 }
 
 func (r *BodyReader) Close() error {
-	if _, err := r.b.Seek(0, io.SeekStart); err != nil {
+	_, err := r.b.Seek(0, io.SeekStart)
+	if err != nil {
 		return fmt.Errorf("can't seek: %w", err)
 	}
 	return nil

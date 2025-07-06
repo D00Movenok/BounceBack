@@ -13,13 +13,6 @@ type RuleSet struct {
 	Rules map[string]Rule
 }
 
-func (rs *RuleSet) Get(name string) (Rule, bool) {
-	if rule, ok := rs.Rules[name]; ok {
-		return rule, true
-	}
-	return nil, false
-}
-
 func NewRuleSet(
 	db *database.DB,
 	cfg []common.RuleConfig,
@@ -40,7 +33,8 @@ func NewRuleSet(
 
 		lastToken := tokens[len(tokens)-1]
 		if newRule, ok := GetRuleBase()[lastToken]; ok {
-			if rule, err = newRule(db, rs, rc, globals); err != nil {
+			rule, err = newRule(db, rs, rc, globals)
+			if err != nil {
 				return nil, fmt.Errorf(
 					"can't create base rule for \"%s\": %w",
 					rc.Name,
@@ -55,7 +49,7 @@ func NewRuleSet(
 		}
 
 		// iterate tokens without last
-		for i := len(tokens) - 2; i >= 0; i-- { //nolint:gomnd
+		for i := len(tokens) - 2; i >= 0; i-- { //nolint:mnd
 			wrapperName := tokens[i]
 			if wrapperCreator, ok := GetRuleWrappers()[wrapperName]; ok {
 				rule = wrapperCreator(rule, rc)
@@ -76,4 +70,11 @@ func NewRuleSet(
 	}
 
 	return &rs, nil
+}
+
+func (rs *RuleSet) Get(name string) (Rule, bool) {
+	if rule, ok := rs.Rules[name]; ok {
+		return rule, true
+	}
+	return nil, false
 }

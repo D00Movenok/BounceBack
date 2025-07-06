@@ -12,7 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func PrepareMany(
+func prepareMany(
 	rules []Rule,
 	e wrapper.Entity,
 	logger zerolog.Logger,
@@ -90,8 +90,8 @@ func netbiosDecode(data []byte, isLowercase bool) ([]byte, error) {
 	}
 
 	for i := 0; i < len(data); i += 2 {
-		data[i/2] = ((data[i] - start) << 4) + //nolint:gomnd
-			((data[i+1] - start) & 0xF) //nolint:gomnd
+		data[i/2] = ((data[i] - start) << 4) + //nolint:mnd
+			((data[i+1] - start) & 0xF) //nolint:mnd
 	}
 
 	return data[:len(data)/2], nil

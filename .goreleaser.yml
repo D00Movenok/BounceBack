@@ -29,9 +29,10 @@ builds:
 
 archives:
   - id: "bounceback"
-    format: zip
-    builds:
+    ids:
       - "bounceback"
+    formats:
+      - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     wrap_in_directory: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
@@ -45,7 +46,7 @@ checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
 
 snapshot:
-  name_template: "{{ .Version }}-next"
+  version_template: "{{ .Version }}-next"
 
 changelog:
   sort: asc

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -17,7 +18,7 @@ type Client interface {
 	GetLocationForIP(ctx context.Context, ip string) (*Location, error)
 }
 
-// Primary URL.
+// StandardURL is the primary URL.
 const StandardURL = "https://ipapi.co"
 
 func NewClient() Client {
@@ -93,10 +94,15 @@ func getLocation(
 	}
 	defer resp.Body.Close()
 
-	var l Location
-	err = json.NewDecoder(resp.Body).Decode(&l)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse json answer: %w", err)
+		return nil, fmt.Errorf("can't read http response body: %w", err)
+	}
+
+	var l Location
+	err = json.Unmarshal(body, &l)
+	if err != nil {
+		return nil, fmt.Errorf("can't parse json answer \"%s\": %w", body, err)
 	}
 
 	if resp.StatusCode != http.StatusOK || l.IsError {

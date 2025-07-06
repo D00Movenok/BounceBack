@@ -8,7 +8,7 @@ import (
 
 func parseSchemeAddrPort(url string) (string, netip.AddrPort, error) {
 	split := strings.Split(url, "://")
-	if len(split) != 2 { //nolint: gomnd // scheme + addrport
+	if len(split) != 2 { //nolint: mnd // scheme + addrport
 		return "", netip.AddrPort{}, &InvalidSchemeAddrPortError{url: url}
 	}
 

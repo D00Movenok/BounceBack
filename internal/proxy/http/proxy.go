@@ -30,6 +30,16 @@ var (
 	}
 )
 
+type Proxy struct {
+	*base.Proxy
+
+	TargetURL *url.URL
+	ActionURL *url.URL
+
+	server *http.Server
+	client *http.Client
+}
+
 func NewProxy(
 	cfg common.ProxyConfig,
 	rs *rules.RuleSet,
@@ -98,16 +108,6 @@ func NewProxy(
 	return p, nil
 }
 
-type Proxy struct {
-	*base.Proxy
-
-	TargetURL *url.URL
-	ActionURL *url.URL
-
-	server *http.Server
-	client *http.Client
-}
-
 func (p *Proxy) Start() error {
 	p.WG.Add(1)
 	go p.serve()
@@ -116,7 +116,8 @@ func (p *Proxy) Start() error {
 
 func (p *Proxy) Shutdown(ctx context.Context) error {
 	p.Closing = true
-	if err := p.server.Shutdown(ctx); err != nil {
+	err := p.server.Shutdown(ctx)
+	if err != nil {
 		return fmt.Errorf("can't shutdown server: %w", err)
 	}
 	p.client.CloseIdleConnections()
@@ -173,7 +174,8 @@ func (p *Proxy) proxyRequest(
 	}
 	w.WriteHeader(response.StatusCode)
 
-	if _, err = io.Copy(w, response.Body); err != nil {
+	_, err = io.Copy(w, response.Body)
+	if err != nil {
 		logger.Error().Err(err).Msg("Can't copy body")
 		handleError(w)
 		return
@@ -206,7 +208,7 @@ func (p *Proxy) processVerdict(
 			handleError(w)
 			return
 		}
-		conn.Close()
+		conn.Close() //nolint:gosec // does not matter if error occurs
 	default:
 		logger.Warn().Msg("Request was filtered, but action is none")
 		p.proxyRequest(p.TargetURL, w, r, e, logger)
@@ -215,7 +217,9 @@ func (p *Proxy) processVerdict(
 
 func (p *Proxy) createEntity(r *http.Request) (wrapper.Entity, error) {
 	var err error
-	if r.Body, err = wrapper.WrapHTTPBody(r.Body); err != nil {
+	r.Body, err = wrapper.WrapHTTPBody(r.Body)
+
+	if err != nil {
 		return nil, fmt.Errorf("can't wrap body: %w", err)
 	}
 	r.Header.Set("Host", r.Host)

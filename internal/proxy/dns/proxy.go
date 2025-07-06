@@ -27,6 +27,20 @@ var (
 	}
 )
 
+type Proxy struct {
+	*base.Proxy
+
+	TargetURL netip.AddrPort
+	ActionURL netip.AddrPort
+
+	// NOTE: servertcp is a tcp or tcp-tls server,
+	// serverudp is a udp server, used only when servertcp is tcp
+	// (not tcp-tls).
+	servertcp *dns.Server
+	serverudp *dns.Server
+	client    *dns.Client
+}
+
 func NewProxy(
 	cfg common.ProxyConfig,
 	rs *rules.RuleSet,
@@ -85,20 +99,6 @@ func NewProxy(
 	return p, nil
 }
 
-type Proxy struct {
-	*base.Proxy
-
-	TargetURL netip.AddrPort
-	ActionURL netip.AddrPort
-
-	// NOTE: servertcp is a tcp or tcp-tls server,
-	// serverudp is a udp server, used only when servertcp is tcp
-	// (not tcp-tls).
-	servertcp *dns.Server
-	serverudp *dns.Server
-	client    *dns.Client
-}
-
 func (p *Proxy) Start() error {
 	p.WG.Add(1)
 	go p.servetcp()
@@ -111,11 +111,13 @@ func (p *Proxy) Start() error {
 
 func (p *Proxy) Shutdown(ctx context.Context) error {
 	p.Closing = true
-	if err := p.servertcp.ShutdownContext(ctx); err != nil {
+	err := p.servertcp.ShutdownContext(ctx)
+	if err != nil {
 		return fmt.Errorf("can't shutdown tcp server: %w", err)
 	}
 	if p.TLSConfig == nil {
-		if err := p.serverudp.ShutdownContext(ctx); err != nil {
+		err = p.serverudp.ShutdownContext(ctx)
+		if err != nil {
 			return fmt.Errorf("can't shutdown udp server: %w", err)
 		}
 	}

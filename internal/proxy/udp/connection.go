@@ -19,7 +19,8 @@ type Connection struct {
 }
 
 func (c Connection) Close() error {
-	if err := (*c.Dst).Close(); err != nil && !base.IsConnectionClosed(err) {
+	err := (*c.Dst).Close()
+	if err != nil && !base.IsConnectionClosed(err) {
 		return fmt.Errorf("closing connection: %w", err)
 	}
 	return nil

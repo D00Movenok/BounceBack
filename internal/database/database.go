@@ -12,7 +12,7 @@ type DB struct {
 	DB *badger.DB
 }
 
-// Init open DB connection and run migrations.
+// New initializes open DB connection and run migrations.
 func New(path string, inMemory bool) (*DB, error) {
 	bc := badger.DefaultOptions(path).WithInMemory(inMemory)
 	bc.Logger = nil

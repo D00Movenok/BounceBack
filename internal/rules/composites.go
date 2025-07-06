@@ -23,7 +23,7 @@ func NewCompositeAndRule(
 		return nil, fmt.Errorf("can't decode params: %w", err)
 	}
 
-	if len(params.Rules) < 2 { //nolint:gomnd
+	if len(params.Rules) < 2 { //nolint:mnd
 		return nil, ErrInvalidRuleArgs
 	}
 
@@ -51,7 +51,7 @@ func NewCompositeOrRule(
 		return nil, fmt.Errorf("can't decode params: %w", err)
 	}
 
-	if len(params.Rules) < 2 { //nolint:gomnd
+	if len(params.Rules) < 2 { //nolint:mnd
 		return nil, ErrInvalidRuleArgs
 	}
 
@@ -104,7 +104,7 @@ func (f CompositeAndRule) Prepare(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) error {
-	return PrepareMany(
+	return prepareMany(
 		f.rules,
 		e,
 		logger,
@@ -147,11 +147,11 @@ func (f CompositeOrRule) Prepare(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) error {
-	err := PrepareMany(f.rules, e, logger)
-	if err != nil {
-		return fmt.Errorf("can't prepare rules: %w", err)
-	}
-	return nil
+	return prepareMany(
+		f.rules,
+		e,
+		logger,
+	)
 }
 
 func (f CompositeOrRule) Apply(

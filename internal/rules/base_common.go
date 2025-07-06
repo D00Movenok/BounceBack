@@ -5,12 +5,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/netip"
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
+
+	_ "time/tzdata" // for loading time zones
 
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
@@ -23,8 +27,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 func NewRegexpRule(
@@ -159,7 +161,7 @@ func NewTimeRule(
 	)
 
 	if len(params.Weekdays) == 0 {
-		days = maps.Values(daysOfWeek)
+		days = slices.Collect(maps.Values(daysOfWeek))
 	} else {
 		for _, v := range params.Weekdays {
 			d, ok := daysOfWeek[v]
@@ -211,8 +213,10 @@ func NewGeolocationRule(
 		path:       params.Path,
 		geo:        make([]*GeoRegexp, 0, len(params.Geolocations)),
 		apicounter: atomic.NewInt32(0),
-		ipapico:    ipapicoClient,
-		ipapicom:   ipapicomClient,
+		fetchers: []GeoFetcher{
+			NewGeoIPAPICOFetcher(ipapicoClient),
+			NewGeoIPAPICOMFetcher(ipapicomClient),
+		},
 	}
 
 	if params.Path != "" {
@@ -238,9 +242,13 @@ func NewGeolocationRule(
 		// iterate all fields of params.Geolocations,
 		// converts them to regexps and put to gr
 		g := reflect.ValueOf(gc)
-		for i := 0; i < g.NumField(); i++ {
+		for i := range g.NumField() {
 			fn := g.Type().Field(i).Name
-			for _, sre := range g.FieldByName(fn).Interface().([]string) {
+			f, ok := g.FieldByName(fn).Interface().([]string)
+			if !ok {
+				return nil, fmt.Errorf("field %s not found", fn)
+			}
+			for _, sre := range f {
 				re, err = regexp.Compile(sre)
 				if err != nil {
 					return nil, fmt.Errorf("can't compile regexp: %w", err)
@@ -311,7 +319,7 @@ func (f *RegexpRule) Prepare(
 	return nil
 }
 
-func (f RegexpRule) Apply(
+func (f *RegexpRule) Apply(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) (bool, error) {
@@ -328,7 +336,7 @@ func (f RegexpRule) Apply(
 	return false, nil
 }
 
-func (f RegexpRule) String() string {
+func (f *RegexpRule) String() string {
 	return fmt.Sprintf("Regexp(list=%s)", f.path)
 }
 
@@ -481,14 +489,18 @@ func (r *GeoRegexp) String() string {
 	)
 }
 
+type GeoFetcher func(context.Context, string) (*database.Geolocation, error)
+
 type GeoRule struct {
-	db         *database.DB
-	path       string
-	list       []*regexp.Regexp
-	geo        []*GeoRegexp
+	db *database.DB
+
+	path string
+
+	list []*regexp.Regexp
+	geo  []*GeoRegexp
+
 	apicounter *atomic.Int32
-	ipapico    ipapico.Client
-	ipapicom   ipapicom.Client
+	fetchers   []GeoFetcher
 }
 
 func (f *GeoRule) Prepare(
@@ -540,15 +552,44 @@ func (f *GeoRule) getGeoInfoByEntity(
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		time.Second*5, //nolint:gomnd
+		time.Second*5, //nolint:mnd
 	)
 	defer cancel()
 
+	geoFetchErrors := make([]error, 0, len(f.fetchers))
 	geo = &database.Geolocation{}
-	switch f.apicounter.Inc() % 2 {
-	case 0:
-		var g *ipapico.Location
-		g, err = f.ipapico.GetLocationForIP(ctx, ip)
+	for range f.fetchers {
+		fetcherIndex := int(f.apicounter.Load()) % len(f.fetchers)
+		geo, err = f.fetchers[fetcherIndex](ctx, ip)
+		if err != nil {
+			geoFetchErrors = append(geoFetchErrors, err)
+			f.apicounter.Inc()
+			continue
+		}
+	}
+	if geo == nil {
+		return nil, fmt.Errorf(
+			"can't get geolocation: %w",
+			errors.Join(geoFetchErrors...),
+		)
+	}
+
+	logger.Debug().Any("geo", geo).Msg("New geo lookup")
+	err = f.db.SaveGeolocation(ip, geo)
+	if err != nil {
+		return nil, fmt.Errorf("can't save geolocation: %w", err)
+	}
+
+	return geo, nil
+}
+
+func NewGeoIPAPICOFetcher(
+	ipapicoClient ipapico.Client,
+) GeoFetcher {
+	return func(ctx context.Context, ip string) (*database.Geolocation, error) {
+		geo := &database.Geolocation{}
+
+		g, err := ipapicoClient.GetLocationForIP(ctx, ip)
 		if err != nil && !errors.Is(err, ipapico.ErrReservedRange) {
 			return nil, fmt.Errorf(
 				"can't get geolocation with ipapi.co: %w",
@@ -566,11 +607,20 @@ func (f *GeoRule) getGeoInfoByEntity(
 			geo.Timezone = g.Timezone
 			geo.ASN = g.Asn
 		}
-	case 1:
-		var g *ipapicom.Location
-		g, err = f.ipapicom.GetLocationForIP(ctx, ip)
-		if err != nil && !(errors.Is(err, ipapicom.ErrReservedRange) ||
-			errors.Is(err, ipapicom.ErrPrivateRange)) {
+
+		return geo, nil
+	}
+}
+
+func NewGeoIPAPICOMFetcher(
+	ipapicomClient ipapicom.Client,
+) GeoFetcher {
+	return func(ctx context.Context, ip string) (*database.Geolocation, error) {
+		geo := &database.Geolocation{}
+
+		g, err := ipapicomClient.GetLocationForIP(ctx, ip)
+		if err != nil && !errors.Is(err, ipapicom.ErrReservedRange) &&
+			!errors.Is(err, ipapicom.ErrPrivateRange) {
 			return nil, fmt.Errorf(
 				"can't get geolocation with ip-api.com: %w",
 				err,
@@ -587,15 +637,9 @@ func (f *GeoRule) getGeoInfoByEntity(
 			geo.Timezone = g.Timezone
 			geo.ASN, _, _ = strings.Cut(g.As, " ")
 		}
-	}
 
-	logger.Debug().Any("geo", geo).Msg("New geo lookup")
-	err = f.db.SaveGeolocation(ip, geo)
-	if err != nil {
-		return nil, fmt.Errorf("can't save geolocation: %w", err)
+		return geo, nil
 	}
-
-	return geo, nil
 }
 
 func (f *GeoRule) findByRegexp(
@@ -608,7 +652,7 @@ func (f *GeoRule) findByRegexp(
 
 	// iterate fields and match "list" regexps on them
 	gs := reflect.ValueOf(geo).Elem()
-	for i := 0; i < gs.NumField(); i++ {
+	for i := range gs.NumField() {
 		gv := gs.Field(i)
 		if gv.Len() == 0 {
 			continue
@@ -643,7 +687,7 @@ func (f *GeoRule) findByGeoRegexp(
 	var found bool
 	// iterate field regexps and apply them on fields
 	grs := reflect.ValueOf(gr).Elem()
-	for i := 0; i < grs.NumField(); i++ {
+	for i := range grs.NumField() {
 		fn := grs.Type().Field(i).Name
 		gv := reflect.ValueOf(geo).Elem().FieldByName(fn)
 		regexps, _ := grs.FieldByName(fn).Interface().([]*regexp.Regexp)
