@@ -12,7 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func PrepareMany(
+func prepareMany(
 	rules []Rule,
 	e wrapper.Entity,
 	logger zerolog.Logger,

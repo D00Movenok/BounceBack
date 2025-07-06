@@ -42,7 +42,7 @@ The main idea of rules is how BounceBack matches traffic. The tool currently sup
 * Malleable C2 profiles traffic validation
 * Work (or not) hours rule
 
-Custom rules may be easily added, just register your [RuleBaseCreator](/internal/rules/default.go#L9) or [RuleWrapperCreator](/internal/rules/default.go#L3). See already created [RuleBaseCreators](/internal/rules/base_common.go) and [RuleWrapperCreators](/internal/rules/wrappers.go)
+Custom rules may be easily added, just register your [RuleBaseCreator](/internal/rules/rules.go#L9) or [RuleWrapperCreator](/internal/rules/rules.go#L3). See already created [RuleBaseCreators](/internal/rules/base_common.go) and [RuleWrapperCreators](/internal/rules/wrappers.go)
 
 Rules configuration page may be found [here](https://github.com/D00Movenok/BounceBack/wiki/1.-Rules).
 
