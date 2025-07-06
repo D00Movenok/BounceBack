@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	_ "time/tzdata" // for loading time zones
+
 	"github.com/D00Movenok/BounceBack/internal/common"
 	"github.com/D00Movenok/BounceBack/internal/database"
 	"github.com/D00Movenok/BounceBack/internal/wrapper"
