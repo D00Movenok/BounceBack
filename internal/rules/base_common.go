@@ -213,8 +213,10 @@ func NewGeolocationRule(
 		path:       params.Path,
 		geo:        make([]*GeoRegexp, 0, len(params.Geolocations)),
 		apicounter: atomic.NewInt32(0),
-		ipapico:    ipapicoClient,
-		ipapicom:   ipapicomClient,
+		fetchers: []GeoFetcher{
+			NewGeoIPAPICOFetcher(ipapicoClient),
+			NewGeoIPAPICOMFetcher(ipapicomClient),
+		},
 	}
 
 	if params.Path != "" {
@@ -487,14 +489,18 @@ func (r *GeoRegexp) String() string {
 	)
 }
 
+type GeoFetcher func(context.Context, string) (*database.Geolocation, error)
+
 type GeoRule struct {
-	db         *database.DB
-	path       string
-	list       []*regexp.Regexp
-	geo        []*GeoRegexp
+	db *database.DB
+
+	path string
+
+	list []*regexp.Regexp
+	geo  []*GeoRegexp
+
 	apicounter *atomic.Int32
-	ipapico    ipapico.Client
-	ipapicom   ipapicom.Client
+	fetchers   []GeoFetcher
 }
 
 func (f *GeoRule) Prepare(
@@ -550,11 +556,40 @@ func (f *GeoRule) getGeoInfoByEntity(
 	)
 	defer cancel()
 
+	geoFetchErrors := make([]error, 0, len(f.fetchers))
 	geo = &database.Geolocation{}
-	switch f.apicounter.Inc() % 2 {
-	case 0:
-		var g *ipapico.Location
-		g, err = f.ipapico.GetLocationForIP(ctx, ip)
+	for range f.fetchers {
+		fetcherIndex := int(f.apicounter.Load()) % len(f.fetchers)
+		geo, err = f.fetchers[fetcherIndex](ctx, ip)
+		if err != nil {
+			geoFetchErrors = append(geoFetchErrors, err)
+			f.apicounter.Inc()
+			continue
+		}
+	}
+	if geo == nil {
+		return nil, fmt.Errorf(
+			"can't get geolocation: %w",
+			errors.Join(geoFetchErrors...),
+		)
+	}
+
+	logger.Debug().Any("geo", geo).Msg("New geo lookup")
+	err = f.db.SaveGeolocation(ip, geo)
+	if err != nil {
+		return nil, fmt.Errorf("can't save geolocation: %w", err)
+	}
+
+	return geo, nil
+}
+
+func NewGeoIPAPICOFetcher(
+	ipapicoClient ipapico.Client,
+) GeoFetcher {
+	return func(ctx context.Context, ip string) (*database.Geolocation, error) {
+		geo := &database.Geolocation{}
+
+		g, err := ipapicoClient.GetLocationForIP(ctx, ip)
 		if err != nil && !errors.Is(err, ipapico.ErrReservedRange) {
 			return nil, fmt.Errorf(
 				"can't get geolocation with ipapi.co: %w",
@@ -572,9 +607,18 @@ func (f *GeoRule) getGeoInfoByEntity(
 			geo.Timezone = g.Timezone
 			geo.ASN = g.Asn
 		}
-	case 1:
-		var g *ipapicom.Location
-		g, err = f.ipapicom.GetLocationForIP(ctx, ip)
+
+		return geo, nil
+	}
+}
+
+func NewGeoIPAPICOMFetcher(
+	ipapicomClient ipapicom.Client,
+) GeoFetcher {
+	return func(ctx context.Context, ip string) (*database.Geolocation, error) {
+		geo := &database.Geolocation{}
+
+		g, err := ipapicomClient.GetLocationForIP(ctx, ip)
 		if err != nil && !errors.Is(err, ipapicom.ErrReservedRange) &&
 			!errors.Is(err, ipapicom.ErrPrivateRange) {
 			return nil, fmt.Errorf(
@@ -593,15 +637,9 @@ func (f *GeoRule) getGeoInfoByEntity(
 			geo.Timezone = g.Timezone
 			geo.ASN, _, _ = strings.Cut(g.As, " ")
 		}
-	}
 
-	logger.Debug().Any("geo", geo).Msg("New geo lookup")
-	err = f.db.SaveGeolocation(ip, geo)
-	if err != nil {
-		return nil, fmt.Errorf("can't save geolocation: %w", err)
+		return geo, nil
 	}
-
-	return geo, nil
 }
 
 func (f *GeoRule) findByRegexp(
