@@ -18,6 +18,12 @@ The tool is distributed with preconfigured lists of blocked words, blocked and a
 
 For more information on tool usage, you may visit [project's wiki](https://github.com/D00Movenok/BounceBack/wiki).
 
+## Sponsors
+
+[![Swiftproxy](/assets/sp_SwiftProxy.png)](https://www.swiftproxy.net/?ref=BounceBack)
+
+<i><sub>Do you want to show your ad here? [Contact me](https://t.me/D00Movenok)</sub></i>
+
 ## Features
 
 * Highly configurable and customizable filters pipeline with boolean-based concatenation of rules will be able to hide your infrastructure from the most keen blue eyes.
