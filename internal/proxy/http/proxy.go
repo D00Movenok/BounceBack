@@ -144,12 +144,19 @@ func (p *Proxy) proxyRequest(
 	e wrapper.Entity,
 	logger zerolog.Logger,
 ) {
+
+	origHost := r.Host
+	if origHost == "" {
+		origHost = r.Header.Get("Host")
+	}
+
 	r.URL.Scheme = url.Scheme
 	r.URL.Host = url.Host
 	r.URL.Path = url.Path + r.URL.Path
 
 	r.RequestURI = ""
-	r.Host = ""
+	r.Host = origHost
+	r.Header.Set("Host", origHost)
 	r.Header.Del("Accept-Encoding")
 
 	xForwardedFor := r.Header.Get("X-Forwarded-For")
